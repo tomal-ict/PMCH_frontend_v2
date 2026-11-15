@@ -101,6 +101,27 @@ export default function DoctorProfile() {
     setLoading(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
+    const fallbackFromDirectory = (drId) => {
+      api.get('/doctors')
+        .then((drRes) => {
+          if (drRes.data?.success && Array.isArray(drRes.data.data)) {
+            const found = drRes.data.data.find(d => String(d.dr_id) === String(drId));
+            if (found) {
+              setDoctor(found);
+              // Pick 4-6 random similar doctors from directory
+              const others = drRes.data.data.filter(d => String(d.dr_id) !== String(drId));
+              setSimilarDoctors(others.slice(0, 6));
+              const seoTitle = `${cleanField(found.dr_name)} - ${cleanField(found.dr_degree)} | Popular Medical College Hospital`;
+              document.title = seoTitle;
+              return;
+            }
+          }
+          setDoctor(null);
+        })
+        .catch(() => setDoctor(null))
+        .finally(() => setLoading(false));
+    };
+
     api.get(`/doctors/${id}`)
       .then((res) => {
         if (res.data?.success && res.data.data) {
@@ -111,15 +132,15 @@ export default function DoctorProfile() {
           // SEO Title update
           const seoTitle = d.seo?.meta_title || `${cleanField(d.dr_name)} - ${cleanField(d.dr_degree)} | Popular Medical College Hospital`;
           document.title = seoTitle;
+          setLoading(false);
         } else {
-          setDoctor(null);
+          fallbackFromDirectory(id);
         }
       })
       .catch((err) => {
-        console.error('Error loading doctor details:', err);
-        setDoctor(null);
-      })
-      .finally(() => setLoading(false));
+        console.warn('Direct doctor detail fetch failed, utilizing active directory fallback:', err);
+        fallbackFromDirectory(id);
+      });
   }, [id]);
 
   if (loading) {
