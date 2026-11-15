@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 
+// Helper to convert any YouTube URL/ID into a clean embed URL
+const getYoutubeEmbed = (url) => {
+  if (!url) return '';
+  if (url.includes('youtube.com/embed/')) return url;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  if (match && match[1]) {
+    return `https://www.youtube.com/embed/${match[1]}`;
+  }
+  return url.startsWith('http') ? url : `https://www.youtube.com/embed/${url}`;
+};
+
 export default function VideoGallery() {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,21 +62,30 @@ export default function VideoGallery() {
           </div>
         ) : (
           <div className="row">
-            {videos.map((item) => (
-              <div key={item.med_id} className="col-lg-6 mb-4">
-                <div className="card h-100 shadow-sm border-0 p-3">
-                  <div className="embed-responsive embed-responsive-16by9 mb-3">
-                    <iframe
-                      className="embed-responsive-item"
-                      src={item.med_link?.includes('youtube') ? item.med_link : `https://www.youtube.com/embed/${item.med_link}`}
-                      title={item.med_title}
-                      allowFullScreen
-                    ></iframe>
+            {videos.map((item) => {
+              const videoUrl = item.med_url || item.med_file || item.med_link;
+              const embedSrc = getYoutubeEmbed(videoUrl);
+
+              return (
+                <div key={item.med_id} className="col-lg-6 mb-4">
+                  <div className="card h-100 shadow-sm border-0 p-3 rounded-lg overflow-hidden">
+                    <div className="embed-responsive embed-responsive-16by9 mb-3 rounded shadow-sm">
+                      <iframe
+                        className="embed-responsive-item"
+                        src={embedSrc}
+                        title={item.med_title}
+                        allowFullScreen
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      ></iframe>
+                    </div>
+                    <h5 className="font-weight-bold text-dark mb-1">{item.med_title}</h5>
+                    {item.med_desc && (
+                      <p className="text-muted small mb-0">{item.med_desc}</p>
+                    )}
                   </div>
-                  <h5 className="font-weight-bold text-dark mb-0">{item.med_title}</h5>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -54,7 +54,11 @@ export default function PhotoGallery() {
                 <div className="card h-100 shadow-sm border-0 overflow-hidden">
                   <div style={{ height: '250px', overflow: 'hidden' }}>
                     <img
-                      src={`/media/${item.med_link}`}
+                      src={
+                        item.med_file 
+                          ? (item.med_file.startsWith('http') || item.med_file.startsWith('/') ? item.med_file : `/uploads/${item.med_file}`)
+                          : (item.med_url || item.med_link || '/banner.jpg')
+                      }
                       alt={item.med_title}
                       className="w-100 h-100"
                       style={{ objectFit: 'cover', transition: 'transform 0.3s' }}

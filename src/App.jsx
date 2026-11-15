@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import api from './services/api';
 
 // Pages
 import Home from './pages/Home';
@@ -46,6 +47,59 @@ function ScrollToTop() {
 export default function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname === '/login';
+
+  // Digital Marketing & SEO Pixel/Tag Dynamic Injector
+  useEffect(() => {
+    api.get('/marketing-tags')
+      .then(res => {
+        if (!res.data?.success || !res.data.tags) return;
+        const tags = res.data.tags;
+
+        // 1. Google Analytics (GA4 / Universal)
+        if (tags.google_analytics_id && !document.getElementById('pmch-gtag')) {
+          const gaScript = document.createElement('script');
+          gaScript.id = 'pmch-gtag';
+          gaScript.async = true;
+          gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${tags.google_analytics_id}`;
+          document.head.appendChild(gaScript);
+
+          const gaInline = document.createElement('script');
+          gaInline.id = 'pmch-gtag-init';
+          gaInline.innerHTML = `
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${tags.google_analytics_id}');
+          `;
+          document.head.appendChild(gaInline);
+        }
+
+        // 2. Facebook Pixel / Meta Pixel
+        if (tags.facebook_pixel_id && !document.getElementById('pmch-fbpixel')) {
+          const fbScript = document.createElement('script');
+          fbScript.id = 'pmch-fbpixel';
+          fbScript.innerHTML = `
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '${tags.facebook_pixel_id}');
+            fbq('track', 'PageView');
+          `;
+          document.head.appendChild(fbScript);
+        }
+
+        // 3. SEO Meta Title & Meta Description update
+        if (tags.site_meta_title && !document.title) {
+          document.title = tags.site_meta_title;
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="d-flex flex-column min-vh-100">
