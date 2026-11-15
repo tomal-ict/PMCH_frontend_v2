@@ -13,6 +13,24 @@ const getYoutubeEmbed = (url) => {
   return url.startsWith('http') ? url : `https://www.youtube.com/embed/${url}`;
 };
 
+// Clean HTML tags and decode HTML entities, stripping placeholder dots like <h1>.</h1>
+const cleanField = (str) => {
+  if (!str) return '';
+  let clean = String(str)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (/^[\s.*-]*$/.test(clean)) return '';
+  return clean;
+};
+
 // Smooth Counting Number Component (RequestAnimationFrame easing)
 function AnimatedCounter({ end = 0, duration = 1400, formatter = (n) => n.toLocaleString() }) {
   const [count, setCount] = useState(0);
@@ -203,6 +221,12 @@ export default function AdminDashboard() {
   const [team, setTeam] = useState([]);
   const [pages, setPages] = useState([]);
   const [specialities, setSpecialities] = useState([]);
+  
+  // Doctor Search, Speciality Filter & Pagination States
+  const [doctorSearch, setDoctorSearch] = useState('');
+  const [selectedSpecialityFilter, setSelectedSpecialityFilter] = useState('');
+  const [doctorPage, setDoctorPage] = useState(1);
+  const DOCTORS_PER_PAGE = 25;
   const [settings, setSettings] = useState({
     project_name: '',
     project_company: '',
@@ -337,6 +361,23 @@ export default function AdminDashboard() {
     });
   };
 
+  // Filtered & Paginated Doctors Calculation
+  const filteredDoctors = doctors.filter(dr => {
+    const query = doctorSearch.trim().toLowerCase();
+    const matchesSearch = !query || 
+      (dr.dr_name && dr.dr_name.toLowerCase().includes(query)) ||
+      (dr.dr_degree && dr.dr_degree.toLowerCase().includes(query)) ||
+      (dr.speciality_names && dr.speciality_names.toLowerCase().includes(query));
+    
+    const matchesSpec = !selectedSpecialityFilter || 
+      (dr.speciality_ids && dr.speciality_ids.split(',').map(s => s.trim()).includes(String(selectedSpecialityFilter)));
+
+    return matchesSearch && matchesSpec;
+  });
+
+  const totalDoctorPages = Math.ceil(filteredDoctors.length / DOCTORS_PER_PAGE) || 1;
+  const paginatedDoctors = filteredDoctors.slice((doctorPage - 1) * DOCTORS_PER_PAGE, doctorPage * DOCTORS_PER_PAGE);
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === 'overview') loadDashboard();
@@ -347,7 +388,10 @@ export default function AdminDashboard() {
     else if (tab === 'pages_seo') loadPages();
     else if (tab === 'settings') loadSettings();
     else if (tab === 'marketing' || tab === 'smtp_sms') loadMarketingSettings();
-    else if (tab === 'specialities') api.get('/admin/specialities').then(res => res.data?.success && setSpecialities(res.data.data));
+    else if (tab === 'specialities') {
+      api.get('/admin/specialities').then(res => res.data?.success && setSpecialities(res.data.data));
+      loadDoctors();
+    }
 
     if (window.innerWidth < 992) {
       setSidebarOpen(false);
@@ -375,9 +419,7 @@ export default function AdminDashboard() {
     const data = new FormData();
     data.append('file', file);
 
-    api.post('/admin/upload', data, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    api.post('/admin/upload', data)
       .then(res => {
         if (res.data?.success) {
           showToast('Image uploaded successfully!');
@@ -398,7 +440,16 @@ export default function AdminDashboard() {
     if (item) {
       if (type === 'doctor') {
         const specIds = item.speciality_ids ? item.speciality_ids.split(',').map(Number) : [];
-        setFormData({ ...item, specialities: specIds });
+        setFormData({
+          ...item,
+          dr_name: cleanField(item.dr_name),
+          dr_degree: cleanField(item.dr_degree),
+          dr_education: cleanField(item.dr_education),
+          dr_prev_exp: cleanField(item.dr_prev_exp),
+          dr_exp_sum: cleanField(item.dr_exp_sum),
+          dr_visit_hrs: cleanField(item.dr_visit_hrs),
+          specialities: specIds
+        });
       } else {
         setFormData({ ...item });
       }
@@ -426,7 +477,16 @@ export default function AdminDashboard() {
     api.get(`/admin/doctors/${dr.dr_id}/seo`)
       .then(res => {
         if (res.data?.success && res.data.seo) {
-          setDoctorSeoForm(res.data.seo);
+          const s = res.data.seo;
+          setDoctorSeoForm({
+            ...s,
+            meta_title: cleanField(s.meta_title),
+            meta_description: cleanField(s.meta_description),
+            meta_keywords: cleanField(s.meta_keywords),
+            canonical_url: s.canonical_url || `https://demo.pmch-bd.com/package?dr=${dr.dr_id}`,
+            og_image: s.og_image || dr.dr_image || 'male.jpg',
+            schema_markup: s.schema_markup || ''
+          });
         }
       })
       .catch(err => showToast('Failed to load Doctor SEO', 'danger'));
@@ -587,7 +647,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="d-flex" style={{ minHeight: '100vh', backgroundColor: '#f4f7f6', overflowX: 'hidden' }}>
+    <div className="d-flex" style={{ height: '100vh', maxHeight: '100vh', backgroundColor: '#f4f7f6', overflow: 'hidden' }}>
       {/* Toast Notification Popup */}
       {toast.show && (
         <div
@@ -600,18 +660,20 @@ export default function AdminDashboard() {
       )}
 
       {/* ========================================================
-          1. MODERN RESPONSIVE SIDEBAR
+          1. MODERN RESPONSIVE SIDEBAR (ROCK-SOLID FIXED)
           ======================================================== */}
       <aside
         style={{
-          width: sidebarOpen ? '280px' : '0px',
-          minWidth: sidebarOpen ? '280px' : '0px',
+          width: sidebarOpen ? '270px' : '0px',
+          minWidth: sidebarOpen ? '270px' : '0px',
+          height: '100vh',
           backgroundColor: '#0c1a14',
           color: '#ffffff',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           overflowY: 'auto',
           overflowX: 'hidden',
           zIndex: 1000,
+          flexShrink: 0,
           borderRight: '1px solid rgba(255,255,255,0.08)'
         }}
         className="d-flex flex-column"
@@ -737,7 +799,7 @@ export default function AdminDashboard() {
             <div className="sidebar-icon-box" style={{ color: activeTab === 'doctors' ? '#ffffff' : '#10b981' }}>
               <i className="fas fa-user-md"></i>
             </div>
-            <span className="sidebar-nav-text">Doctors Management & SEO</span>
+            <span className="sidebar-nav-text">Doctor List</span>
             {activeTab === 'doctors' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
           </button>
 
@@ -839,7 +901,7 @@ export default function AdminDashboard() {
       {/* ========================================================
           2. MAIN CONTENT AREA (HEADER + BODY)
           ======================================================== */}
-      <div className="d-flex flex-column flex-grow-1" style={{ minWidth: 0 }}>
+      <div className="d-flex flex-column flex-grow-1" style={{ minWidth: 0, height: '100vh', overflowY: 'auto' }}>
         {/* Top Header Bar (Height 64px - Exact match with Sidebar Header) */}
         <header
           className="d-flex align-items-center justify-content-between px-3 px-md-4 bg-white shadow-sm"
@@ -1637,7 +1699,7 @@ export default function AdminDashboard() {
                 <div>
                   <h5 className="font-weight-bold text-dark mb-1">
                     <i className="fas fa-user-md mr-2" style={{ color: '#00984A' }}></i>
-                    Doctors Directory & Individual SEO Optimizer
+                    Doctor List & Individual SEO Optimizer
                   </h5>
                   <p className="text-muted small mb-0">Manage doctor credentials, clinical schedules, and custom Google Search SEO metadata per doctor.</p>
                 </div>
@@ -1648,6 +1710,77 @@ export default function AdminDashboard() {
                 >
                   <i className="fas fa-plus-circle mr-1"></i> Add New Doctor
                 </button>
+              </div>
+
+              {/* Doctor Search & Speciality Filter Bar */}
+              <div className="p-3 mb-4 rounded bg-light border">
+                <div className="row align-items-center">
+                  <div className="col-md-5 mb-2 mb-md-0">
+                    <div className="input-group">
+                      <div className="input-group-prepend">
+                        <span className="input-group-text bg-white border-right-0">
+                          <i className="fas fa-search text-muted"></i>
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        className="form-control border-left-0"
+                        placeholder="Search doctor by name, degree, department..."
+                        value={doctorSearch}
+                        onChange={(e) => {
+                          setDoctorSearch(e.target.value);
+                          setDoctorPage(1);
+                        }}
+                      />
+                      {doctorSearch && (
+                        <div className="input-group-append">
+                          <button
+                            className="btn btn-outline-secondary"
+                            onClick={() => { setDoctorSearch(''); setDoctorPage(1); }}
+                          >
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="col-md-4 mb-2 mb-md-0">
+                    <select
+                      className="form-control"
+                      value={selectedSpecialityFilter}
+                      onChange={(e) => {
+                        setSelectedSpecialityFilter(e.target.value);
+                        setDoctorPage(1);
+                      }}
+                    >
+                      <option value="">All Specialities ({specialities.length})</option>
+                      {specialities.map(s => (
+                        <option key={s.sp_id} value={s.sp_id}>
+                          {s.sp_name} ({s.doctor_count || 0})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-md-3 text-md-right">
+                    {(doctorSearch || selectedSpecialityFilter) && (
+                      <button
+                        onClick={() => {
+                          setDoctorSearch('');
+                          setSelectedSpecialityFilter('');
+                          setDoctorPage(1);
+                        }}
+                        className="btn btn-sm btn-outline-danger mr-2"
+                      >
+                        <i className="fas fa-undo mr-1"></i> Reset
+                      </button>
+                    )}
+                    <span className="badge badge-success px-2 py-1">
+                      {filteredDoctors.length} Doctors
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="table-responsive">
@@ -1663,64 +1796,117 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {doctors.map((dr) => (
-                      <tr key={dr.dr_id}>
-                        <td>
-                          <img
-                            src={dr.dr_image ? (dr.dr_image.startsWith('/') ? dr.dr_image : `/uploads/${dr.dr_image}`) : '/male.jpg'}
-                            alt={dr.dr_name}
-                            className="rounded shadow-sm"
-                            style={{ width: '45px', height: '45px', objectFit: 'cover' }}
-                            onError={(e) => { e.target.src = '/male.jpg'; }}
-                          />
-                        </td>
-                        <td>
-                          <div className="font-weight-bold text-dark">{dr.dr_name}</div>
-                          <div className="text-muted small">{dr.dr_degree}</div>
-                        </td>
-                        <td>
-                          <span className="badge badge-light px-2 py-1 border text-primary small">
-                            {dr.speciality_names || 'General'}
-                          </span>
-                        </td>
-                        <td className="small text-muted">{dr.dr_visit_hrs || 'By Appointment'}</td>
-                        <td>
-                          <button
-                            onClick={() => handleToggleStatus('tbl_doctor', 'dr_id', dr.dr_id, 'dr_status', setDoctors)}
-                            className={`btn btn-xs px-2 py-1 font-weight-bold rounded-pill ${dr.dr_status === 1 ? 'btn-success' : 'btn-secondary'}`}
-                            style={{ fontSize: '11px', backgroundColor: dr.dr_status === 1 ? '#00984A' : '' }}
-                          >
-                            {dr.dr_status === 1 ? 'Active' : 'Inactive'}
-                          </button>
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => openDoctorSeoModal(dr)}
-                            className="btn btn-sm btn-outline-success mr-1"
-                            title="Doctor SEO & Google Schema"
-                          >
-                            <i className="fas fa-search-plus mr-1"></i> SEO
-                          </button>
-                          <button
-                            onClick={() => openModal('doctor', dr)}
-                            className="btn btn-sm btn-outline-primary mr-1"
-                            title="Edit Doctor Details"
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button
-                            onClick={() => handleDelete('/admin/doctors', dr.dr_id, loadDoctors)}
-                            className="btn btn-sm btn-outline-danger"
-                            title="Delete"
-                          >
-                            <i className="fas fa-trash-alt"></i>
-                          </button>
+                    {paginatedDoctors.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="text-center py-4 text-muted">
+                          <i className="fas fa-user-slash fa-2x mb-2 d-block text-secondary"></i>
+                          No doctors found matching the search criteria.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      paginatedDoctors.map((dr) => (
+                        <tr key={dr.dr_id}>
+                          <td>
+                            <img
+                              src={dr.dr_image ? (dr.dr_image.startsWith('/') ? dr.dr_image : `/uploads/${dr.dr_image}`) : '/male.jpg'}
+                              alt={dr.dr_name}
+                              className="rounded shadow-sm"
+                              style={{ width: '45px', height: '45px', objectFit: 'cover' }}
+                              onError={(e) => { e.target.src = '/male.jpg'; }}
+                            />
+                          </td>
+                          <td>
+                            <div className="font-weight-bold text-dark">{cleanField(dr.dr_name)}</div>
+                            <div className="text-muted small text-truncate" style={{ maxWidth: '340px' }}>
+                              {cleanField(dr.dr_degree)}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge badge-light px-2 py-1 border text-primary small">
+                              {dr.speciality_names || 'General'}
+                            </span>
+                          </td>
+                          <td className="small text-muted">{cleanField(dr.dr_visit_hrs) || 'By Appointment'}</td>
+                          <td>
+                            <button
+                              onClick={() => handleToggleStatus('tbl_doctor', 'dr_id', dr.dr_id, 'dr_status', setDoctors)}
+                              className={`btn btn-xs px-2 py-1 font-weight-bold rounded-pill ${dr.dr_status === 1 ? 'btn-success' : 'btn-secondary'}`}
+                              style={{ fontSize: '11px', backgroundColor: dr.dr_status === 1 ? '#00984A' : '' }}
+                            >
+                              {dr.dr_status === 1 ? 'Active' : 'Inactive'}
+                            </button>
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => openDoctorSeoModal(dr)}
+                              className="btn btn-sm btn-outline-success mr-1"
+                              title="Doctor SEO & Google Schema"
+                            >
+                              <i className="fas fa-search-plus mr-1"></i> SEO
+                            </button>
+                            <button
+                              onClick={() => openModal('doctor', dr)}
+                              className="btn btn-sm btn-outline-primary mr-1"
+                              title="Edit Doctor Details"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </button>
+                            <button
+                              onClick={() => handleDelete('/admin/doctors', dr.dr_id, loadDoctors)}
+                              className="btn btn-sm btn-outline-danger"
+                              title="Delete"
+                            >
+                              <i className="fas fa-trash-alt"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination Controls */}
+              {totalDoctorPages > 1 && (
+                <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top flex-wrap">
+                  <div className="small text-muted mb-2 mb-sm-0">
+                    Showing {(doctorPage - 1) * DOCTORS_PER_PAGE + 1} - {Math.min(doctorPage * DOCTORS_PER_PAGE, filteredDoctors.length)} of {filteredDoctors.length} doctors
+                  </div>
+                  <div className="btn-group">
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      disabled={doctorPage <= 1}
+                      onClick={() => setDoctorPage(1)}
+                    >
+                      First
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      disabled={doctorPage <= 1}
+                      onClick={() => setDoctorPage(p => Math.max(1, p - 1))}
+                    >
+                      <i className="fas fa-chevron-left mr-1"></i> Prev
+                    </button>
+                    <span className="btn btn-sm btn-light border px-3">
+                      Page {doctorPage} of {totalDoctorPages}
+                    </span>
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      disabled={doctorPage >= totalDoctorPages}
+                      onClick={() => setDoctorPage(p => Math.min(totalDoctorPages, p + 1))}
+                    >
+                      Next <i className="fas fa-chevron-right ml-1"></i>
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      disabled={doctorPage >= totalDoctorPages}
+                      onClick={() => setDoctorPage(totalDoctorPages)}
+                    >
+                      Last
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1733,7 +1919,7 @@ export default function AdminDashboard() {
                     <i className="fas fa-stethoscope mr-2" style={{ color: '#00984A' }}></i>
                     Clinical Specialities & Departments
                   </h5>
-                  <p className="text-muted small mb-0">Manage hospital medical departments shown in Mega Menu and Doctor Directory.</p>
+                  <p className="text-muted small mb-0">Manage hospital medical departments and view consultant doctors by speciality.</p>
                 </div>
                 <button
                   onClick={() => openModal('speciality')}
@@ -1750,9 +1936,10 @@ export default function AdminDashboard() {
                     <tr>
                       <th style={{ width: '60px' }}>ID</th>
                       <th>Speciality Name</th>
+                      <th style={{ width: '150px' }}>Consultant Doctors</th>
                       <th>Overview Info</th>
                       <th style={{ width: '90px' }}>Status</th>
-                      <th style={{ width: '120px' }}>Actions</th>
+                      <th style={{ width: '160px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1760,7 +1947,21 @@ export default function AdminDashboard() {
                       <tr key={s.sp_id}>
                         <td className="font-weight-bold">{s.sp_id}</td>
                         <td className="font-weight-bold text-dark">{s.sp_name}</td>
-                        <td className="small text-muted text-truncate" style={{ maxWidth: '300px' }}>{s.sp_info || '—'}</td>
+                        <td>
+                          <button
+                            onClick={() => {
+                              setSelectedSpecialityFilter(String(s.sp_id));
+                              setDoctorSearch('');
+                              setDoctorPage(1);
+                              setActiveTab('doctors');
+                            }}
+                            className="btn btn-xs btn-outline-success font-weight-bold px-2 py-1 rounded-pill"
+                            title={`Click to see all ${s.doctor_count || 0} doctors in ${s.sp_name}`}
+                          >
+                            <i className="fas fa-user-md mr-1"></i> {s.doctor_count || 0} Doctors
+                          </button>
+                        </td>
+                        <td className="small text-muted text-truncate" style={{ maxWidth: '280px' }}>{s.sp_info || s.sp_desc || '—'}</td>
                         <td>
                           <button
                             onClick={() => handleToggleStatus('tbl_speciality', 'sp_id', s.sp_id, 'sp_status', setSpecialities)}
@@ -1771,6 +1972,18 @@ export default function AdminDashboard() {
                           </button>
                         </td>
                         <td>
+                          <button
+                            onClick={() => {
+                              setSelectedSpecialityFilter(String(s.sp_id));
+                              setDoctorSearch('');
+                              setDoctorPage(1);
+                              setActiveTab('doctors');
+                            }}
+                            className="btn btn-sm btn-outline-info mr-1"
+                            title="Filter Doctors by this Speciality"
+                          >
+                            <i className="fas fa-eye"></i>
+                          </button>
                           <button onClick={() => openModal('speciality', s)} className="btn btn-sm btn-outline-primary mr-1">
                             <i className="fas fa-edit"></i>
                           </button>
@@ -2116,117 +2329,128 @@ export default function AdminDashboard() {
           style={{ top: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 999999, padding: '20px' }}
         >
           <div
-            className="card border-0 shadow-lg rounded-lg overflow-hidden w-100"
-            style={{ maxWidth: '820px', maxHeight: '92vh', overflowY: 'auto' }}
+            className="card border-0 shadow-lg rounded-lg overflow-hidden w-100 d-flex flex-column"
+            style={{ maxWidth: '820px', maxHeight: '90vh' }}
           >
-            <div className="card-header bg-dark text-white d-flex align-items-center justify-content-between py-3">
-              <h6 className="font-weight-bold mb-0 text-white">
+            <div className="card-header bg-dark text-white d-flex align-items-center justify-content-between py-3 flex-shrink-0">
+              <h6 className="font-weight-bold mb-0 text-white text-truncate mr-2">
                 <i className="fas fa-search-plus text-success mr-2"></i>
-                Doctor Individual SEO & Google Structured Schema: <span className="text-warning">{selectedDoctorSeo.dr_name}</span>
+                Doctor Individual SEO & Google Structured Schema: <span className="text-warning">{cleanField(selectedDoctorSeo.dr_name)}</span>
               </h6>
-              <button onClick={closeDoctorSeoModal} className="btn btn-sm btn-link text-white">
+              <button onClick={closeDoctorSeoModal} className="btn btn-sm btn-link text-white p-0">
                 <i className="fas fa-times fa-lg"></i>
               </button>
             </div>
 
-            <form onSubmit={handleSaveDoctorSeo} className="p-4 bg-white">
-              {/* Google Search Live Snippet Preview */}
-              <div className="p-3 mb-4 rounded border" style={{ backgroundColor: '#fdfdfd' }}>
-                <div className="small font-weight-bold text-muted mb-2 text-uppercase" style={{ letterSpacing: '0.5px' }}>
-                  <i className="fab fa-google text-primary mr-1"></i> Google Search Result Live Preview:
-                </div>
-                <div style={{ fontFamily: 'Arial, sans-serif' }}>
-                  <div className="text-primary small text-truncate" style={{ fontSize: '13px' }}>
-                    https://demo.pmch-bd.com/package?dr={selectedDoctorSeo.dr_id}
+            <form onSubmit={handleSaveDoctorSeo} className="d-flex flex-column flex-grow-1 overflow-hidden" style={{ minHeight: 0 }}>
+              <div className="p-3 p-md-4 bg-white flex-grow-1" style={{ overflowY: 'auto' }}>
+                {/* Google Search Live Snippet Preview */}
+                <div className="p-3 mb-4 rounded border" style={{ backgroundColor: '#fdfdfd' }}>
+                  <div className="small font-weight-bold text-muted mb-2 text-uppercase" style={{ letterSpacing: '0.5px' }}>
+                    <i className="fab fa-google text-primary mr-1"></i> Google Search Result Live Preview:
                   </div>
-                  <h6 className="font-weight-bold mb-1" style={{ color: '#1a0dab', fontSize: '18px', lineHeight: '1.3' }}>
-                    {doctorSeoForm.meta_title || `${selectedDoctorSeo.dr_name} - Consultant Specialist | PMCH`}
-                  </h6>
-                  <p className="mb-0 text-muted" style={{ fontSize: '13px', lineHeight: '1.4' }}>
-                    {doctorSeoForm.meta_description || `Consult with ${selectedDoctorSeo.dr_name} at Popular Medical College Hospital. Visiting Hours: ${selectedDoctorSeo.dr_visit_hrs || 'By Appointment'}. Chamber Room Consultation.`}
-                  </p>
+                  <div style={{ fontFamily: 'Arial, sans-serif' }}>
+                    <div className="text-primary small text-truncate" style={{ fontSize: '13px' }}>
+                      https://demo.pmch-bd.com/package?dr={selectedDoctorSeo.dr_id}
+                    </div>
+                    <h6 className="font-weight-bold mb-1" style={{ color: '#1a0dab', fontSize: '18px', lineHeight: '1.3' }}>
+                      {cleanField(doctorSeoForm.meta_title) || `${cleanField(selectedDoctorSeo.dr_name)} - Specialist Consultant at PMCH`}
+                    </h6>
+                    <p className="mb-0 text-muted" style={{ fontSize: '13px', lineHeight: '1.4' }}>
+                      {cleanField(doctorSeoForm.meta_description) || `Consult with ${cleanField(selectedDoctorSeo.dr_name)} at Popular Medical College Hospital. Visiting Hours: ${cleanField(selectedDoctorSeo.dr_visit_hrs) || 'By Appointment'}. Quality tertiary clinical healthcare in Dhaka.`}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-12 form-group">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <label className="font-weight-bold small text-dark">Google Meta Title *</label>
+                      <span className="small text-muted">{doctorSeoForm.meta_title?.length || 0} / 60 recommended</span>
+                    </div>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={doctorSeoForm.meta_title || ''}
+                      onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, meta_title: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="col-md-12 form-group">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <label className="font-weight-bold small text-dark">Google Meta Description</label>
+                      <span className="small text-muted">{doctorSeoForm.meta_description?.length || 0} / 160 recommended</span>
+                    </div>
+                    <textarea
+                      rows="3"
+                      className="form-control"
+                      value={doctorSeoForm.meta_description || ''}
+                      onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, meta_description: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="col-md-12 form-group">
+                    <label className="font-weight-bold small text-dark">Doctor Search Keywords (Comma Separated)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={doctorSeoForm.meta_keywords || ''}
+                      onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, meta_keywords: e.target.value })}
+                      placeholder="e.g. skin allergy specialist dhaka, dr shirajul islam, popular hospital doctor"
+                    />
+                  </div>
+
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Canonical URL</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={doctorSeoForm.canonical_url || ''}
+                      onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, canonical_url: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Social Share OG Image</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={doctorSeoForm.og_image || ''}
+                      onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, og_image: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="col-md-12 form-group">
+                    <label className="font-weight-bold small text-dark">Schema.org JSON-LD Structured Data (Physician Schema)</label>
+                    <textarea
+                      rows="4"
+                      className="form-control font-monospace small"
+                      style={{ fontFamily: 'monospace', fontSize: '11px', backgroundColor: '#fcfcfc' }}
+                      value={doctorSeoForm.schema_markup || ''}
+                      onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, schema_markup: e.target.value })}
+                    />
+                    <small className="form-text text-muted">Google Physician rich snippet markup to display doctor stars, specialty and phone directly in Google.</small>
+                  </div>
                 </div>
               </div>
 
-              <div className="row">
-                <div className="col-md-12 form-group">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <label className="font-weight-bold small text-dark">Google Meta Title *</label>
-                    <span className="small text-muted">{doctorSeoForm.meta_title?.length || 0} / 60 recommended</span>
-                  </div>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={doctorSeoForm.meta_title || ''}
-                    onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, meta_title: e.target.value })}
-                    required
-                  />
+              {/* Modal Sticky Footer (Always Visible Without Zooming Out) */}
+              <div
+                className="p-3 bg-light border-top d-flex justify-content-between align-items-center flex-shrink-0"
+                style={{ position: 'sticky', bottom: 0, zIndex: 10 }}
+              >
+                <span className="small text-muted font-italic d-none d-sm-inline">
+                  * Live Google snippet preview and Physician Schema generator
+                </span>
+                <div>
+                  <button type="button" onClick={closeDoctorSeoModal} className="btn btn-secondary mr-2">
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-success font-weight-bold px-4" style={{ backgroundColor: '#00984A' }}>
+                    <i className="fas fa-save mr-1"></i> Save Doctor SEO
+                  </button>
                 </div>
-
-                <div className="col-md-12 form-group">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <label className="font-weight-bold small text-dark">Google Meta Description</label>
-                    <span className="small text-muted">{doctorSeoForm.meta_description?.length || 0} / 160 recommended</span>
-                  </div>
-                  <textarea
-                    rows="3"
-                    className="form-control"
-                    value={doctorSeoForm.meta_description || ''}
-                    onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, meta_description: e.target.value })}
-                  />
-                </div>
-
-                <div className="col-md-12 form-group">
-                  <label className="font-weight-bold small text-dark">Doctor Search Keywords (Comma Separated)</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={doctorSeoForm.meta_keywords || ''}
-                    onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, meta_keywords: e.target.value })}
-                    placeholder="e.g. brain surgeon in dhaka, dr mostafizur, popular hospital doctor"
-                  />
-                </div>
-
-                <div className="col-md-6 form-group">
-                  <label className="font-weight-bold small text-dark">Canonical URL</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={doctorSeoForm.canonical_url || ''}
-                    onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, canonical_url: e.target.value })}
-                  />
-                </div>
-
-                <div className="col-md-6 form-group">
-                  <label className="font-weight-bold small text-dark">Social Share OG Image</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={doctorSeoForm.og_image || ''}
-                    onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, og_image: e.target.value })}
-                  />
-                </div>
-
-                <div className="col-md-12 form-group">
-                  <label className="font-weight-bold small text-dark">Schema.org JSON-LD Structured Data (Physician Schema)</label>
-                  <textarea
-                    rows="4"
-                    className="form-control font-monospace small"
-                    style={{ fontFamily: 'monospace', fontSize: '11px', backgroundColor: '#fcfcfc' }}
-                    value={doctorSeoForm.schema_markup || ''}
-                    onChange={(e) => setDoctorSeoForm({ ...doctorSeoForm, schema_markup: e.target.value })}
-                  />
-                  <small className="form-text text-muted">Google Physician rich snippet markup to display doctor stars, specialty and phone directly in Google.</small>
-                </div>
-              </div>
-
-              <div className="border-top pt-3 d-flex justify-content-end">
-                <button type="button" onClick={closeDoctorSeoModal} className="btn btn-secondary mr-2">
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-success font-weight-bold px-4" style={{ backgroundColor: '#00984A' }}>
-                  <i className="fas fa-save mr-1"></i> Save Doctor SEO
-                </button>
               </div>
             </form>
           </div>
@@ -2242,20 +2466,21 @@ export default function AdminDashboard() {
           style={{ top: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 99999, padding: '20px' }}
         >
           <div
-            className="card border-0 shadow-lg rounded-lg overflow-hidden w-100"
-            style={{ maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto' }}
+            className="card border-0 shadow-lg rounded-lg overflow-hidden w-100 d-flex flex-column"
+            style={{ maxWidth: '750px', maxHeight: '90vh' }}
           >
-            <div className="card-header bg-dark text-white d-flex align-items-center justify-content-between py-3">
+            <div className="card-header bg-dark text-white d-flex align-items-center justify-content-between py-3 flex-shrink-0" style={{ backgroundColor: '#0c1a14' }}>
               <h6 className="font-weight-bold mb-0 text-white">
                 <i className="fas fa-pen-fancy mr-2 text-success"></i>
                 {editingItem ? 'Edit Item' : 'Add New Entry'}: {modalType.toUpperCase()}
               </h6>
-              <button onClick={closeModal} className="btn btn-sm btn-link text-white">
+              <button onClick={closeModal} className="btn btn-sm btn-link text-white p-0">
                 <i className="fas fa-times fa-lg"></i>
               </button>
             </div>
 
-            <form onSubmit={handleModalSubmit} className="p-4 bg-white">
+            <form onSubmit={handleModalSubmit} className="d-flex flex-column flex-grow-1 overflow-hidden" style={{ minHeight: 0 }}>
+              <div className="p-3 p-md-4 bg-white flex-grow-1" style={{ overflowY: 'auto' }}>
               {/* DOCTOR MODAL */}
               {modalType === 'doctor' && (
                 <div className="row">
@@ -2395,19 +2620,39 @@ export default function AdminDashboard() {
                       className="form-control"
                       value={formData.med_title || ''}
                       onChange={(e) => setFormData({ ...formData, med_title: e.target.value })}
+                      placeholder="e.g. Modern Laparoscopic Operation Theater"
                       required
                     />
                   </div>
                   <div className="col-md-12 form-group">
                     <label className="font-weight-bold small">Upload Image File *</label>
-                    <div className="d-flex align-items-center">
+                    <div className="p-3 rounded border text-center" style={{ backgroundColor: '#f8fafc' }}>
                       <input
                         type="file"
-                        className="form-control-file mr-3"
+                        accept="image/*"
+                        className="form-control-file mb-2"
                         onChange={(e) => handleFileUpload(e, 'med_file')}
                       />
+                      {uploading && (
+                        <div className="text-primary small font-weight-bold my-2">
+                          <i className="fas fa-spinner fa-spin mr-1"></i> Uploading image file...
+                        </div>
+                      )}
                       {formData.med_file && (
-                        <span className="badge badge-success p-2">Uploaded: {formData.med_file}</span>
+                        <div className="mt-2">
+                          <span className="badge badge-success px-3 py-2">
+                            <i className="fas fa-check-circle mr-1"></i> Uploaded: {formData.med_file}
+                          </span>
+                          <div className="mt-2">
+                            <img
+                              src={formData.med_file.startsWith('/') ? formData.med_file : `/uploads/${formData.med_file}`}
+                              alt="Preview"
+                              className="img-thumbnail shadow-sm"
+                              style={{ maxHeight: '120px' }}
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -2418,6 +2663,7 @@ export default function AdminDashboard() {
                       className="form-control"
                       value={formData.med_desc || ''}
                       onChange={(e) => setFormData({ ...formData, med_desc: e.target.value })}
+                      placeholder="Optional photo details or context..."
                     />
                   </div>
                 </div>
@@ -2427,7 +2673,7 @@ export default function AdminDashboard() {
               {modalType === 'video' && (
                 <div className="row">
                   <div className="col-md-12 form-group">
-                    <label className="font-weight-bold small">Video Title *</label>
+                    <label className="font-weight-bold small">Video Title / Topic *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -2451,12 +2697,12 @@ export default function AdminDashboard() {
                   </div>
                   {formData.med_url && (
                     <div className="col-md-12 mb-3">
-                      <label className="font-weight-bold small text-success">
-                        <i className="fas fa-play-circle mr-1"></i> Live Embed Preview:
+                      <label className="font-weight-bold small text-success d-block mb-1">
+                        <i className="fas fa-play-circle mr-1"></i> Live Preview:
                       </label>
-                      <div className="embed-responsive embed-responsive-16by9 rounded shadow-sm">
+                      <div className="rounded overflow-hidden shadow-sm border bg-dark mx-auto" style={{ maxWidth: '340px', height: '190px' }}>
                         <iframe
-                          className="embed-responsive-item"
+                          style={{ width: '100%', height: '100%', border: 0 }}
                           src={getYoutubeEmbed(formData.med_url)}
                           title="Live Preview"
                           allowFullScreen
@@ -2471,6 +2717,7 @@ export default function AdminDashboard() {
                       className="form-control"
                       value={formData.med_desc || ''}
                       onChange={(e) => setFormData({ ...formData, med_desc: e.target.value })}
+                      placeholder="Brief description or speaker details..."
                     />
                   </div>
                 </div>
@@ -2623,14 +2870,29 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="border-top pt-3 d-flex justify-content-end">
-                <button type="button" onClick={closeModal} className="btn btn-secondary mr-2">
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-success font-weight-bold px-4" style={{ backgroundColor: '#00984A' }}>
-                  <i className="fas fa-check-circle mr-1"></i> Save Changes
-                </button>
+              </div>
+
+              {/* Modal Sticky Footer (Always Visible Without Zooming Out) */}
+              <div
+                className="p-3 bg-light border-top d-flex justify-content-between align-items-center flex-shrink-0"
+                style={{ position: 'sticky', bottom: 0, zIndex: 10 }}
+              >
+                <span className="small text-muted font-italic d-none d-sm-inline">
+                  {uploading ? 'Uploading file in progress...' : '* All required fields must be completed'}
+                </span>
+                <div className="ml-auto">
+                  <button type="button" onClick={closeModal} className="btn btn-secondary mr-2">
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={uploading}
+                    className="btn btn-success font-weight-bold px-4 shadow-sm"
+                    style={{ backgroundColor: '#00984A' }}
+                  >
+                    <i className="fas fa-check-circle mr-1"></i> Save Changes
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -2659,8 +2921,8 @@ export default function AdminDashboard() {
           width: 100%;
           display: flex;
           align-items: center;
-          padding: 8px 10px;
-          margin-bottom: 3px;
+          padding: 6px 10px;
+          margin-bottom: 2px;
           border: 1px solid transparent;
           border-radius: 8px;
           background: transparent;

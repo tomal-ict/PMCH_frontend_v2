@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 
-// Verified fallback hierarchy in case of network latency
+// Verified fallback hierarchy matching PMCH organizational governance
 const initialFallbackRows = {
   1: [
     {
       id: 1,
       name: 'Late Tahera Akhter',
       designation: 'Chairman',
+      honorific: 'Founder Chairman (In Memoriam)',
       image: '2004062097-20260408153112-1486274258.png',
       row: 1,
       sl: 1,
@@ -18,6 +19,7 @@ const initialFallbackRows = {
       id: 2,
       name: 'Dr. Mostafizur Rahman',
       designation: 'Managing Director',
+      honorific: 'Managing Director, Popular Group & PMCH',
       image: '483877393-20260408152857-743861522.jpeg',
       row: 1,
       sl: 2,
@@ -115,30 +117,80 @@ const initialFallbackRows = {
 
 const tierMeta = {
   1: {
-    title: 'Apex Leadership & Board of Directors',
-    subtitle: 'The visionary founders and executive trustees steering PMCH.',
-    colClass: 'col-lg-5 col-md-6 mb-4',
-    badge: 'Executive Trustees'
+    title: 'Apex Leadership & Board of Trustees',
+    subtitle: 'The visionary founders steering Popular Medical College & Hospital.',
+    badge: 'Executive Trustees',
+    colClass: 'col-lg-6 col-md-12 mb-4'
   },
   2: {
-    title: 'Directorate & Clinical Governance',
-    subtitle: 'Distinguished directors overseeing medical operations and hospital governance.',
-    colClass: 'col-lg-4 col-md-6 mb-4',
-    badge: 'Hospital Directorate'
+    title: 'Hospital Directorate & Clinical Governance',
+    subtitle: 'Distinguished directors overseeing healthcare operations, ethics, and clinical standards.',
+    badge: 'Hospital Directorate',
+    colClass: 'col-lg-4 col-md-6 mb-4'
   },
   3: {
-    title: 'Departmental Heads & Nursing Leadership',
-    subtitle: 'Senior functional managers dedicated to operational excellence and patient care.',
-    colClass: 'col-lg-3 col-md-6 mb-4',
-    badge: 'Departmental Heads'
+    title: 'Departmental Heads & Senior Leadership',
+    subtitle: 'Functional leaders dedicated to operational excellence, patient nursing care, and corporate affairs.',
+    badge: 'Departmental Leadership',
+    colClass: 'col-lg-3 col-md-6 mb-4'
   },
   4: {
     title: 'Operations, Billing & Specialist Services',
-    subtitle: 'Specialized healthcare management and hospital administrative services.',
-    colClass: 'col-lg-4 col-md-6 mb-4',
-    badge: 'Operations & Clinical Support'
+    subtitle: 'Specialized healthcare management, billing administration, human resources, and clinical nutrition.',
+    badge: 'Operations & Clinical Support',
+    colClass: 'col-lg-4 col-md-6 mb-4'
   }
 };
+
+// Helper function to format ALL CAPS names into professional Title Case
+function formatName(name) {
+  if (!name) return '';
+  const trimmed = name.trim();
+  const letters = trimmed.replace(/[^a-zA-Z]/g, '');
+  const upperCount = (trimmed.match(/[A-Z]/g) || []).length;
+
+  if (letters.length > 0 && upperCount / letters.length > 0.6) {
+    return trimmed.toLowerCase().split(/\s+/).map(word => {
+      if (!word) return '';
+      if (word === 'dr.' || word === 'dr') return 'Dr.';
+      if (word === 'md.' || word === 'md') return 'Md.';
+      if (word === 'ma.' || word === 'ma') return 'Ma.';
+      if (word === 'ha' || word === 'ha.') return 'Ha.';
+      if (word === 'asso.' || word === 'asso') return 'Asso.';
+      if (word === 'prof.' || word === 'prof') return 'Prof.';
+      if (word === 'mrs.' || word === 'mrs') return 'Mrs.';
+      if (word === 'hr' || word === 'hr.') return 'HR';
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  }
+  return trimmed;
+}
+
+// Clean HTML tags, HTML entities, and remove redundant bios
+function cleanBio(bio, designation) {
+  if (!bio) return null;
+  const clean = bio
+    .replace(/<[^>]*>?/gm, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!clean || clean === '.' || clean === '-' || clean === designation?.trim()) return null;
+  return clean;
+}
+
+// Clean text helper for designations
+function cleanText(text) {
+  if (!text) return '';
+  return text
+    .replace(/<[^>]*>?/gm, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
+}
 
 export default function ManagementTeam() {
   const [groupedRows, setGroupedRows] = useState(initialFallbackRows);
@@ -159,46 +211,41 @@ export default function ManagementTeam() {
       });
   }, []);
 
-  // Clean html bio tags helper
-  const cleanBio = (bio) => {
-    if (!bio) return null;
-    return bio.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
-  };
-
   // Sorted row keys
   const rowKeys = Object.keys(groupedRows).map(Number).sort((a, b) => a - b);
 
   return (
-    <div className="bg-light">
+    <div className="bg-light min-vh-100" style={{ fontFamily: 'Segoe UI, Roboto, -apple-system, BlinkMacSystemFont, sans-serif' }}>
       {/* Modern Page Header Banner */}
       <section
         className="page-header position-relative py-5 m-0 text-white"
         style={{
-          background: 'linear-gradient(135deg, rgba(7, 30, 18, 0.92) 0%, rgba(0, 75, 36, 0.88) 100%), url("/pmch/img/sliderTwo.jpg")',
+          background: 'linear-gradient(135deg, rgba(7, 30, 18, 0.94) 0%, rgba(0, 75, 36, 0.90) 100%), url("/pmch/img/sliderTwo.jpg")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          boxShadow: 'inset 0 -10px 25px rgba(0,0,0,0.2)'
+          boxShadow: 'inset 0 -10px 30px rgba(0,0,0,0.25)'
         }}
       >
         <div className="container" style={{ maxWidth: '1240px' }}>
           <div className="row align-items-center">
             <div className="col-lg-8 text-center text-lg-left">
               <span
-                className="badge px-3 py-1 text-uppercase font-weight-bold mb-2 shadow-sm"
+                className="badge px-3 py-1 text-uppercase font-weight-bold mb-2 shadow-sm d-inline-block"
                 style={{
                   backgroundColor: '#00984A',
                   color: '#ffffff',
                   letterSpacing: '1.2px',
-                  fontSize: '11px'
+                  fontSize: '11px',
+                  borderRadius: '20px'
                 }}
               >
-                About PMCH • Organizational Structure
+                Governance & Hospital Leadership
               </span>
-              <h1 className="font-weight-extra-bold text-white mb-2" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.5rem)' }}>
+              <h1 className="font-weight-bold text-white mb-2" style={{ fontSize: 'clamp(1.9rem, 3.2vw, 2.6rem)', letterSpacing: '-0.5px' }}>
                 Management Team
               </h1>
-              <p className="text-white-50 mb-0 font-weight-light">
-                Distinguished leadership driving clinical excellence, compassionate care, and hospital administration.
+              <p className="text-white-50 mb-0 font-weight-normal" style={{ maxWidth: '640px', fontSize: '15px', lineHeight: '1.6' }}>
+                The distinguished executives, clinicians, and administrative leaders steering Popular Medical College & Hospital with compassionate patient care and institutional excellence.
               </p>
             </div>
             <div className="col-lg-4 text-center text-lg-right mt-3 mt-lg-0">
@@ -225,40 +272,45 @@ export default function ManagementTeam() {
         {rowKeys.map((rowNum) => {
           const members = (groupedRows[rowNum] || []).sort((a, b) => (a.sl || 0) - (b.sl || 0));
           const meta = tierMeta[rowNum] || {
-            title: `Leadership Tier ${rowNum}`,
+            title: `Leadership Category ${rowNum}`,
             subtitle: 'Institutional Management',
             colClass: 'col-lg-4 col-md-6 mb-4',
             badge: 'Management'
           };
 
+          const isApexTier = rowNum === 1;
+
           return (
             <div key={rowNum} className="tier-section mb-5">
-              {/* Tier Heading Divider */}
+              {/* Category Heading Divider */}
               <div className="text-center mb-4">
-                <span
-                  className="badge px-3 py-1 font-weight-bold text-uppercase mb-2 shadow-sm"
-                  style={{
-                    backgroundColor: rowNum === 1 ? 'rgba(0, 152, 74, 0.15)' : '#e9ecef',
-                    color: rowNum === 1 ? '#00984A' : '#495057',
-                    letterSpacing: '1.2px',
-                    fontSize: '11px'
-                  }}
-                >
-                  {meta.badge}
-                </span>
+                <div className="d-inline-flex align-items-center justify-content-center mb-2">
+                  <span
+                    className="badge px-3 py-1 font-weight-bold text-uppercase shadow-sm"
+                    style={{
+                      backgroundColor: isApexTier ? '#00984A' : '#eaf7f0',
+                      color: isApexTier ? '#ffffff' : '#00984A',
+                      letterSpacing: '1px',
+                      fontSize: '11px',
+                      borderRadius: '20px'
+                    }}
+                  >
+                    {meta.badge}
+                  </span>
+                </div>
                 <h2
                   className="font-weight-bold text-dark mb-1"
-                  style={{ fontSize: rowNum === 1 ? '1.85rem' : '1.5rem', letterSpacing: '-0.3px' }}
+                  style={{ fontSize: isApexTier ? '1.8rem' : '1.45rem', letterSpacing: '-0.3px' }}
                 >
                   {meta.title}
                 </h2>
-                <p className="text-muted small mb-0 font-weight-normal mx-auto" style={{ maxWidth: '650px' }}>
+                <p className="text-muted small mb-0 font-weight-normal mx-auto" style={{ maxWidth: '620px', lineHeight: '1.5' }}>
                   {meta.subtitle}
                 </p>
                 <div
-                  className="mx-auto mt-2 mb-4"
+                  className="mx-auto mt-3"
                   style={{
-                    width: '60px',
+                    width: '45px',
                     height: '3px',
                     backgroundColor: '#00984A',
                     borderRadius: '2px'
@@ -266,133 +318,216 @@ export default function ManagementTeam() {
                 />
               </div>
 
-              {/* Members Row (Strictly Ordered by row and sl) */}
-              <div className="row justify-content-center">
-                {members.map((member) => {
-                  const bioText = cleanBio(member.bio);
-                  const isTopTier = rowNum === 1;
+              {/* Members Row - Tier 1: Apex Leadership (Executive Horizontal / Duo Card) */}
+              {isApexTier ? (
+                <div className="row justify-content-center">
+                  {members.map((member) => {
+                    const formattedName = formatName(member.name);
+                    const isChairman = member.id === 1 || (member.row === 1 && member.sl === 1);
+                    const isMD = member.id === 2 || (member.row === 1 && member.sl === 2);
 
-                  return (
-                    <div key={member.id} className={meta.colClass}>
-                      <div
-                        className="card h-100 border-0 shadow-sm rounded-lg overflow-hidden team-card"
-                        style={{
-                          backgroundColor: '#ffffff',
-                          transition: 'all 0.3s ease',
-                          borderTop: isTopTier ? '4px solid #00984A' : '3px solid transparent'
-                        }}
-                      >
-                        {/* Member Portrait Frame */}
+                    return (
+                      <div key={member.id} className={meta.colClass}>
                         <div
-                          className="position-relative overflow-hidden text-center"
+                          className="card border-0 shadow-sm rounded-lg overflow-hidden h-100 team-card"
                           style={{
-                            backgroundColor: '#f8fbf9',
-                            height: isTopTier ? '320px' : '260px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderBottom: '1px solid #edf2ef'
+                            backgroundColor: '#ffffff',
+                            borderTop: '4px solid #00984A',
+                            borderRadius: '14px',
+                            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                           }}
                         >
-                          <img
-                            src={`/team/${member.image}`}
-                            alt={`${member.name} - ${member.designation}`}
-                            className="img-fluid w-100 h-100 team-img"
-                            style={{
-                              objectFit: 'cover',
-                              objectPosition: 'top center',
-                              transition: 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)'
-                            }}
-                            onError={(e) => {
-                              // If specific team photo fails, fallback to known images
-                              if (member.id === 1) e.target.src = '/pmch/img/chairman.png';
-                              else if (member.id === 2) e.target.src = '/pmch/img/md.png';
-                              else e.target.src = '/male.jpg';
-                            }}
-                          />
+                          <div className="card-body p-4">
+                            <div className="d-flex flex-column flex-sm-row align-items-center text-center text-sm-left">
+                              {/* Compact, Sharp Portrait Frame */}
+                              <div className="mb-3 mb-sm-0 mr-sm-4 flex-shrink-0">
+                                <div
+                                  style={{
+                                    width: '135px',
+                                    height: '160px',
+                                    borderRadius: '12px',
+                                    overflow: 'hidden',
+                                    backgroundColor: '#f1f7f3',
+                                    border: '2px solid #e1efe6',
+                                    boxShadow: '0 6px 16px rgba(0, 152, 74, 0.12)'
+                                  }}
+                                >
+                                  <img
+                                    src={`/team/${member.image}`}
+                                    alt={`${formattedName} - ${member.designation}`}
+                                    className="w-100 h-100 team-img"
+                                    style={{
+                                      objectFit: 'cover',
+                                      objectPosition: 'top center',
+                                      imageRendering: '-webkit-optimize-contrast'
+                                    }}
+                                    onError={(e) => {
+                                      if (isChairman) e.target.src = '/pmch/img/chairman.png';
+                                      else if (isMD) e.target.src = '/pmch/img/md.png';
+                                      else e.target.src = '/male.jpg';
+                                    }}
+                                  />
+                                </div>
+                              </div>
 
-                          {/* Order Badge Indicator */}
-                          <span
-                            className="position-absolute badge badge-dark px-2 py-1 shadow-sm"
-                            style={{
-                              top: '12px',
-                              right: '12px',
-                              opacity: 0.85,
-                              fontSize: '10px',
-                              letterSpacing: '0.5px'
-                            }}
-                          >
-                            Tier {member.row} • #{member.sl}
-                          </span>
-                        </div>
+                              {/* Content Info */}
+                              <div className="flex-grow-1">
+                                <span
+                                  className="badge px-2 py-1 font-weight-bold text-uppercase mb-2 d-inline-block"
+                                  style={{
+                                    backgroundColor: 'rgba(0, 152, 74, 0.12)',
+                                    color: '#00984A',
+                                    fontSize: '11px',
+                                    borderRadius: '6px'
+                                  }}
+                                >
+                                  {cleanText(member.designation)}
+                                </span>
 
-                        {/* Member Details */}
-                        <div className="card-body p-4 text-center d-flex flex-column justify-content-between">
-                          <div>
-                            <h4
-                              className="font-weight-bold text-dark mb-1"
-                              style={{
-                                fontSize: isTopTier ? '1.25rem' : '1.05rem',
-                                lineHeight: '1.3'
-                              }}
-                            >
-                              {member.name}
-                            </h4>
+                                <h3
+                                  className="font-weight-bold text-dark mb-1"
+                                  style={{ fontSize: '1.25rem', lineHeight: '1.3' }}
+                                >
+                                  {formattedName}
+                                </h3>
 
-                            <span
-                              className="badge px-3 py-1 font-weight-bold text-uppercase mb-2 shadow-sm d-inline-block text-wrap"
-                              style={{
-                                backgroundColor: isTopTier ? '#00984A' : '#e6f5ed',
-                                color: isTopTier ? '#ffffff' : '#00984A',
-                                fontSize: '11px',
-                                letterSpacing: '0.6px',
-                                lineHeight: '1.4'
-                              }}
-                            >
-                              {member.designation}
-                            </span>
+                                <p className="text-muted small mb-3" style={{ fontSize: '13px', lineHeight: '1.4' }}>
+                                  {isChairman
+                                    ? 'Late Tahera Akhter laid the founding cornerstone and humanitarian vision of Popular Medical College & Hospital.'
+                                    : 'Pioneering healthcare visionary and Managing Director leading Popular Group towards global clinical standards.'}
+                                </p>
 
-                            {/* Academic or Professional Bio */}
-                            {bioText && bioText !== '.' && (
-                              <p
-                                className="text-muted small mt-2 mb-0"
-                                style={{ lineHeight: '1.5', fontSize: '12px' }}
-                              >
-                                {bioText}
-                              </p>
-                            )}
+                                {/* Action message links */}
+                                {isChairman && (
+                                  <Link
+                                    to="/chairman-message"
+                                    className="btn btn-sm btn-outline-success font-weight-semibold shadow-sm"
+                                    style={{ borderColor: '#00984A', color: '#00984A', borderRadius: '6px', fontSize: '12px' }}
+                                  >
+                                    <i className="fas fa-envelope-open-text mr-1"></i> Chairman's Message
+                                  </Link>
+                                )}
+
+                                {isMD && (
+                                  <Link
+                                    to="/md-message"
+                                    className="btn btn-sm btn-outline-success font-weight-semibold shadow-sm"
+                                    style={{ borderColor: '#00984A', color: '#00984A', borderRadius: '6px', fontSize: '12px' }}
+                                  >
+                                    <i className="fas fa-envelope-open-text mr-1"></i> Managing Director's Message
+                                  </Link>
+                                )}
+                              </div>
+                            </div>
                           </div>
-
-                          {/* Quick Message Link for Chairman & MD */}
-                          {(member.id === 1 || member.row === 1 && member.sl === 1) && (
-                            <div className="mt-3 pt-3 border-top">
-                              <Link
-                                to="/chairman-message"
-                                className="btn btn-sm btn-outline-success font-weight-bold btn-block"
-                                style={{ borderColor: '#00984A', color: '#00984A' }}
-                              >
-                                <i className="fas fa-envelope-open-text mr-1"></i> Read Chairman's Message
-                              </Link>
-                            </div>
-                          )}
-
-                          {(member.id === 2 || member.row === 1 && member.sl === 2) && (
-                            <div className="mt-3 pt-3 border-top">
-                              <Link
-                                to="/md-message"
-                                className="btn btn-sm btn-outline-success font-weight-bold btn-block"
-                                style={{ borderColor: '#00984A', color: '#00984A' }}
-                              >
-                                <i className="fas fa-envelope-open-text mr-1"></i> Read MD's Message
-                              </Link>
-                            </div>
-                          )}
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Members Row - Tier 2, 3, 4: Modern Compact Executive Cards without Hashtags */
+                <div className="row justify-content-center">
+                  {members.map((member) => {
+                    const formattedName = formatName(member.name);
+                    const bioText = cleanBio(member.bio, member.designation);
+
+                    return (
+                      <div key={member.id} className={meta.colClass}>
+                        <div
+                          className="card border-0 shadow-sm rounded-lg overflow-hidden h-100 team-card text-center"
+                          style={{
+                            backgroundColor: '#ffffff',
+                            borderRadius: '14px',
+                            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                            borderTop: '3px solid transparent'
+                          }}
+                        >
+                          <div className="card-body p-4 d-flex flex-column align-items-center justify-content-between">
+                            {/* Compact Sharp Portrait */}
+                            <div className="mb-3 position-relative">
+                              <div
+                                style={{
+                                  width: rowNum === 3 ? '120px' : '125px',
+                                  height: rowNum === 3 ? '140px' : '145px',
+                                  borderRadius: '12px',
+                                  overflow: 'hidden',
+                                  backgroundColor: '#f8faf9',
+                                  border: '2px solid #eef4f0',
+                                  boxShadow: '0 4px 14px rgba(0,0,0,0.06)'
+                                }}
+                              >
+                                <img
+                                  src={`/team/${member.image}`}
+                                  alt={`${formattedName} - ${member.designation}`}
+                                  className="w-100 h-100 team-img"
+                                  style={{
+                                    objectFit: 'cover',
+                                    objectPosition: 'top center',
+                                    imageRendering: '-webkit-optimize-contrast'
+                                  }}
+                                  onError={(e) => {
+                                    e.target.src = '/male.jpg';
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Member Credentials */}
+                            <div className="w-100">
+                              <h4
+                                className="font-weight-bold text-dark mb-1"
+                                style={{
+                                  fontSize: rowNum === 3 ? '1.02rem' : '1.1rem',
+                                  lineHeight: '1.3',
+                                  minHeight: '2.4em',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                {formattedName}
+                              </h4>
+
+                              <div className="mb-2">
+                                <span
+                                  className="badge px-2 py-1 font-weight-semibold text-wrap shadow-none d-inline-block"
+                                  style={{
+                                    backgroundColor: '#eaf7f0',
+                                    color: '#00984A',
+                                    fontSize: '11px',
+                                    lineHeight: '1.4',
+                                    borderRadius: '6px',
+                                    maxWidth: '100%'
+                                  }}
+                                >
+                                  {cleanText(member.designation)}
+                                </span>
+                              </div>
+
+                              {bioText && (
+                                <p
+                                  className="text-muted small mt-2 mb-0"
+                                  style={{
+                                    fontSize: '11.5px',
+                                    lineHeight: '1.45',
+                                    backgroundColor: '#f8faf9',
+                                    padding: '6px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #edf2ee'
+                                  }}
+                                >
+                                  {bioText}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
@@ -400,17 +535,26 @@ export default function ManagementTeam() {
         {/* Institutional Contact Bar */}
         <div
           className="p-4 rounded-lg mt-5 shadow-sm text-center text-md-left text-white d-flex flex-column flex-md-row align-items-center justify-content-between"
-          style={{ backgroundColor: '#00984A' }}
+          style={{
+            background: 'linear-gradient(135deg, #00984A 0%, #007639 100%)',
+            borderRadius: '12px'
+          }}
         >
           <div className="mb-3 mb-md-0">
-            <h4 className="font-weight-bold mb-1 text-white">Join the PMCH Team or Consult Hospital Administration</h4>
-            <p className="mb-0 text-white-50 small">
-              For administrative inquiries, executive correspondence, or corporate partnerships, reach out directly.
+            <h4 className="font-weight-bold mb-1 text-white" style={{ fontSize: '1.25rem' }}>
+              Connect with PMCH Hospital Administration
+            </h4>
+            <p className="mb-0 text-white-50 small" style={{ fontSize: '13px' }}>
+              For executive inquiries, academic affiliations, corporate partnerships, or patient administrative assistance.
             </p>
           </div>
           <div>
-            <Link to="/contact-us" className="btn btn-light font-weight-bold px-4 py-2 text-uppercase shadow-sm" style={{ color: '#00984A' }}>
-              Contact Administration <i className="fas fa-arrow-right ml-2"></i>
+            <Link
+              to="/contact-us"
+              className="btn btn-light font-weight-bold px-4 py-2 text-uppercase shadow-sm"
+              style={{ color: '#00984A', borderRadius: '8px', fontSize: '12px', letterSpacing: '0.5px' }}
+            >
+              Contact Office <i className="fas fa-arrow-right ml-2"></i>
             </Link>
           </div>
         </div>
@@ -418,13 +562,17 @@ export default function ManagementTeam() {
 
       {/* Embedded CSS for hover card styling */}
       <style>{`
+        .team-card {
+          border: 1px solid #edf1ee !important;
+        }
         .team-card:hover {
-          transform: translateY(-6px);
-          box-shadow: 0 16px 35px rgba(0, 0, 0, 0.1) !important;
-          border-top-color: #00984A !important;
+          transform: translateY(-5px);
+          box-shadow: 0 12px 28px rgba(0, 152, 74, 0.12) !important;
+          border-top: 3px solid #00984A !important;
         }
         .team-card:hover .team-img {
-          transform: scale(1.05);
+          transform: scale(1.04);
+          transition: transform 0.3s ease;
         }
       `}</style>
     </div>

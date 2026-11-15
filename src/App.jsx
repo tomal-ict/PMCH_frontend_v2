@@ -32,6 +32,7 @@ import PhotoGallery from './pages/PhotoGallery';
 import VideoGallery from './pages/VideoGallery';
 import History from './pages/History';
 import ContactUs from './pages/ContactUs';
+import DoctorProfile from './pages/DoctorProfile';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 
@@ -122,6 +123,10 @@ export default function App() {
           <Route path="/speciality/:id" element={<Speciality />} />
           <Route path="/speciality/:id/:name" element={<Speciality />} />
           <Route path="/package" element={<Package />} />
+          <Route path="/our-doctors" element={<Package />} />
+          <Route path="/doctor/:id" element={<DoctorProfile />} />
+          <Route path="/doctors/:id" element={<DoctorProfile />} />
+          <Route path="/doctors/:speciality/:slug/:id" element={<DoctorProfile />} />
           <Route path="/rates" element={<Rates />} />
           <Route path="/corporate-patients" element={<Rates />} />
           <Route path="/patient-facilities" element={<PatientFacilities />} />

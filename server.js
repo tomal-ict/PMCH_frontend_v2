@@ -30,8 +30,8 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-  // 1. Proxy API requests to backend
-  if (req.url.startsWith('/api')) {
+  // 1. Proxy API and Upload requests to backend
+  if (req.url.startsWith('/api') || req.url.startsWith('/uploads')) {
     const backendReq = http.request(
       `${BACKEND_URL}${req.url}`,
       {
@@ -48,7 +48,7 @@ const server = http.createServer((req, res) => {
     );
 
     backendReq.on('error', (err) => {
-      console.error('API Proxy error:', err.message);
+      console.error('Proxy error:', err.message);
       res.writeHead(502, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, message: 'Backend service unreachable' }));
     });
