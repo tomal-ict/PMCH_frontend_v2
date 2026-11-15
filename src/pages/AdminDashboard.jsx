@@ -2086,7 +2086,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="row">
-                {media.filter(m => m.med_type === 'image' || m.med_type?.includes('image')).map((item) => (
+                {media.filter(m => m.med_type === 'image' || m.med_type?.includes('image') || m.med_type == 1 || (!m.med_url && m.med_file)).map((item) => (
                   <div key={item.med_id} className="col-lg-3 col-md-4 col-sm-6 mb-4">
                     <div className="card h-100 border shadow-sm rounded-lg overflow-hidden">
                       <div style={{ height: '180px', overflow: 'hidden' }}>
@@ -2147,7 +2147,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="row">
-                {media.filter(m => m.med_type === 'video' || m.med_type?.includes('video')).map((item) => {
+                {media.filter(m => m.med_type === 'video' || m.med_type?.includes('video') || m.med_type == 2 || m.med_url).map((item) => {
                   const embedSrc = getYoutubeEmbed(item.med_url || item.med_file);
                   return (
                     <div key={item.med_id} className="col-lg-6 mb-4">
