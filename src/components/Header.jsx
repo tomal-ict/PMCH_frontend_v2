@@ -14,10 +14,20 @@ export default function Header() {
     patients: false,
     media: false
   });
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const headerRef = useRef(null);
   const closeTimerRef = useRef(null);
   const location = useLocation();
+
+  // Scroll listener to update sticky shadow
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 35);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Load specialities list dynamically for mega menu
   useEffect(() => {
@@ -108,104 +118,111 @@ export default function Header() {
   }
 
   return (
-    <header
-      id="header"
-      ref={headerRef}
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 9999,
-        backgroundColor: '#ffffff',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.08)'
-      }}
-    >
-      <div className="header-body border-top-0">
-        {/* Top Header Bar - POPULAR BRAND GREEN #00984A */}
-        <div className="header-top py-2" style={{ backgroundColor: '#00984A', color: '#ffffff' }}>
-          <div className="container" style={{ maxWidth: '1280px' }}>
-            <div className="d-flex justify-content-between align-items-center flex-wrap">
-              {/* Left Top Links & Helplines */}
-              <div className="d-flex align-items-center flex-wrap small">
-                <Link to="/admission" className="text-white mr-3 d-none d-md-inline-block text-decoration-none">
-                  <i className="fas fa-angle-right mr-1" style={{ opacity: 0.7 }}></i> Admission
-                </Link>
-                <Link to="/amenities" className="text-white mr-3 d-none d-md-inline-block text-decoration-none">
-                  <i className="fas fa-angle-right mr-1" style={{ opacity: 0.7 }}></i> Amenities
-                </Link>
-                <Link to="/career" className="text-white mr-3 d-none d-md-inline-block text-decoration-none">
-                  <i className="fas fa-angle-right mr-1" style={{ opacity: 0.7 }}></i> Career
-                </Link>
-                <Link to="/news-event" className="text-white mr-3 d-none d-md-inline-block text-decoration-none">
-                  <i className="fas fa-angle-right mr-1" style={{ opacity: 0.7 }}></i> News & Events
-                </Link>
-                <a href="tel:09666787800" className="text-white mr-3 text-decoration-none font-weight-bold">
-                  <i className="fas fa-phone-alt mr-1"></i> 09666 787800
-                </a>
-                <a href="mailto:info@popular-hospital.com" className="text-white text-decoration-none d-none d-sm-inline-block">
-                  <i className="fas fa-envelope-open-text mr-1"></i> info@popular-hospital.com
-                </a>
-              </div>
+    <>
+      {/* 1. TOP HEADER BAR (Popular Brand Gradient - naturally scrolls off-screen as page scrolls down) */}
+      <div
+        className="header-top py-2 d-none d-md-block"
+        style={{
+          background: 'linear-gradient(135deg, #006642 0%, #00984A 100%)',
+          color: '#ffffff',
+          position: 'relative',
+          zIndex: 1000
+        }}
+      >
+        <div className="container" style={{ maxWidth: '1360px' }}>
+          <div className="d-flex justify-content-between align-items-center flex-wrap">
+            {/* Left Top Links & Helplines */}
+            <div className="d-flex align-items-center flex-wrap small" style={{ fontFamily: "'Poppins', sans-serif", fontSize: '13px' }}>
+              <Link to="/admission" className="text-white mr-3 d-none d-md-inline-block text-decoration-none">
+                <i className="fas fa-angle-right mr-1" style={{ opacity: 0.7 }}></i> Admission
+              </Link>
+              <Link to="/amenities" className="text-white mr-3 d-none d-md-inline-block text-decoration-none">
+                <i className="fas fa-angle-right mr-1" style={{ opacity: 0.7 }}></i> Amenities
+              </Link>
+              <Link to="/career" className="text-white mr-3 d-none d-md-inline-block text-decoration-none">
+                <i className="fas fa-angle-right mr-1" style={{ opacity: 0.7 }}></i> Career
+              </Link>
+              <Link to="/news-event" className="text-white mr-3 d-none d-md-inline-block text-decoration-none">
+                <i className="fas fa-angle-right mr-1" style={{ opacity: 0.7 }}></i> News & Events
+              </Link>
+              <a href="tel:09666787800" className="text-white mr-3 text-decoration-none font-weight-bold">
+                <i className="fas fa-phone-alt mr-1"></i> 09666 787800
+              </a>
+              <a href="mailto:info@popular-hospital.com" className="text-white text-decoration-none d-none d-sm-inline-block">
+                <i className="fas fa-envelope-open-text mr-1"></i> info@popular-hospital.com
+              </a>
+            </div>
 
-              {/* Right Social Icons & Admin Link */}
-              <div className="d-flex align-items-center">
-                <a
-                  href="https://www.facebook.com/popularhospital.official"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-white mr-3 hover-opacity"
-                  title="Facebook"
-                >
-                  <i className="fab fa-facebook-f"></i>
-                </a>
-                <a
-                  href="https://twitter.com/PMCHBD"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-white mr-3 hover-opacity"
-                  title="Twitter"
-                >
-                  <i className="fab fa-twitter"></i>
-                </a>
-                <a
-                  href="https://www.instagram.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-white mr-3 hover-opacity"
-                  title="Instagram"
-                >
-                  <i className="fab fa-instagram"></i>
-                </a>
-                <a
-                  href="https://www.youtube.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-white mr-3 hover-opacity"
-                  title="YouTube"
-                >
-                  <i className="fab fa-youtube"></i>
-                </a>
-                <Link
-                  to="/login"
-                  className="badge badge-light px-2 py-1 font-weight-bold text-decoration-none ml-2"
-                  style={{ color: '#00984A' }}
-                  title="Hospital Staff & Admin Login"
-                >
-                  <i className="fas fa-lock mr-1"></i> Portal Login
-                </Link>
-              </div>
+            {/* Right Social Icons */}
+            <div className="d-flex align-items-center">
+              <a
+                href="https://www.facebook.com/popularhospital.official"
+                target="_blank"
+                rel="noreferrer"
+                className="text-white mr-3 hover-opacity"
+                title="Facebook"
+              >
+                <i className="fab fa-facebook-f"></i>
+              </a>
+              <a
+                href="https://twitter.com/PMCHBD"
+                target="_blank"
+                rel="noreferrer"
+                className="text-white mr-3 hover-opacity"
+                title="Twitter"
+              >
+                <i className="fab fa-twitter"></i>
+              </a>
+              <a
+                href="https://www.instagram.com"
+                target="_blank"
+                rel="noreferrer"
+                className="text-white mr-3 hover-opacity"
+                title="Instagram"
+              >
+                <i className="fab fa-instagram"></i>
+              </a>
+              <a
+                href="https://www.youtube.com"
+                target="_blank"
+                rel="noreferrer"
+                className="text-white mr-3 hover-opacity"
+                title="YouTube"
+              >
+                <i className="fab fa-youtube"></i>
+              </a>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Main Brand & Nav Bar (ELEGANT MARGINS ON BOTH SIDES & STRICT SINGLE LINE) */}
-        <div className="container position-relative" style={{ maxWidth: '1280px' }}>
-          <div className="d-flex justify-content-between align-items-center py-2 flex-nowrap" style={{ minHeight: '68px' }}>
-            {/* Logo */}
-            <div className="header-logo flex-shrink-0 mr-3">
-              <Link to="/">
+      {/* 2. MAIN NAVIGATION BAR (ROCK-SOLID FIXED STICKY AT TOP: 0 - NEVER HIDES ON SCROLL) */}
+      <header
+        id="header"
+        ref={headerRef}
+        className={`main-sticky-navbar ${isScrolled ? 'is-scrolled' : ''}`}
+        style={{
+          position: 'sticky',
+          top: 0,
+          left: 0,
+          width: '100%',
+          zIndex: 9999,
+          backgroundColor: '#ffffff',
+          boxShadow: isScrolled ? '0 4px 20px rgba(0,0,0,0.12)' : '0 2px 8px rgba(0,0,0,0.06)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          borderBottom: '1px solid #e5e7eb'
+        }}
+      >
+        <div className="header-body border-top-0 bg-transparent">
+          {/* Main Brand & Nav Bar (ELEGANT MARGINS ON BOTH SIDES & STRICT SINGLE LINE) */}
+          <div className="container position-relative" style={{ maxWidth: '1360px' }}>
+          <div className="d-flex justify-content-between align-items-center py-2 flex-nowrap" style={{ minHeight: '74px' }}>
+            {/* Logo - Dynamically Responsive & Prominently Sized */}
+            <div className="header-logo flex-shrink-0 mr-2 mr-lg-3">
+              <Link to="/" className="d-inline-flex align-items-center text-decoration-none">
                 <img
                   alt="PMCH Hospital Logo"
-                  style={{ maxHeight: '48px', width: 'auto', maxWidth: '230px', objectFit: 'contain' }}
+                  className="pmch-header-logo img-fluid"
                   src="/pmch/img/logo.png"
                 />
               </Link>
@@ -691,16 +708,9 @@ export default function Header() {
               </li>
 
               {/* Contact Us */}
-              <li className="border-bottom py-2">
+              <li className="py-2">
                 <Link to="/contact-us" className="text-dark font-weight-bold d-block">
                   <i className="fas fa-map-marker-alt mr-2" style={{ color: '#00984A' }}></i> Contact Us
-                </Link>
-              </li>
-
-              {/* Portal Login */}
-              <li className="py-2">
-                <Link to="/login" className="font-weight-bold d-block" style={{ color: '#00984A' }}>
-                  <i className="fas fa-lock mr-2"></i> Hospital Portal Login
                 </Link>
               </li>
             </ul>
@@ -708,5 +718,6 @@ export default function Header() {
         )}
       </div>
     </header>
+    </>
   );
 }

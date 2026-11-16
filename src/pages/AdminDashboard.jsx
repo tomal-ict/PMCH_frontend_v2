@@ -205,6 +205,22 @@ function AnimatedDonutChart({ data = [], total }) {
   );
 }
 
+const AVAILABLE_PERMISSIONS = [
+  { key: 'overview', label: 'Dashboard & Analytics', icon: 'fa-chart-line' },
+  { key: 'doctors', label: 'Doctor List & Chamber Hours', icon: 'fa-user-md' },
+  { key: 'doctor_seo', label: 'Doctor Individual SEO', icon: 'fa-search-plus' },
+  { key: 'specialities', label: 'Specialities & Departments', icon: 'fa-stethoscope' },
+  { key: 'news', label: 'News & Hospital Events', icon: 'fa-newspaper' },
+  { key: 'photos', label: 'Photo Gallery', icon: 'fa-images' },
+  { key: 'videos', label: 'Video Gallery (YouTube)', icon: 'fab fa-youtube' },
+  { key: 'team', label: 'Management Team (Tiers)', icon: 'fa-users-cog' },
+  { key: 'pages_seo', label: 'Page SEO & Meta Tags', icon: 'fa-globe' },
+  { key: 'marketing', label: 'Google Tags & Meta Pixel', icon: 'fa-bullhorn' },
+  { key: 'smtp_sms', label: 'SMTP & SMS Gateway', icon: 'fa-envelope-open-text' },
+  { key: 'settings', label: 'General Hospital Settings', icon: 'fa-sliders-h' },
+  { key: 'users', label: 'User & Role Management', icon: 'fa-user-shield' }
+];
+
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -213,6 +229,34 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const navigate = useNavigate();
+
+  // Multiple Users & RBAC States
+  const [usersList, setUsersList] = useState([]);
+  const [rolesList, setRolesList] = useState([]);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState(null);
+  const [roleForm, setRoleForm] = useState({ pr_name: '', pr_desc: '', permissions: [] });
+
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userForm, setUserForm] = useState({
+    name: '',
+    username: '',
+    email: '',
+    phone: '',
+    designation: '',
+    password: '',
+    role_id: 1,
+    status: 1
+  });
+
+  const hasPermission = (permKey) => {
+    if (!user) return true;
+    if (user.role_id === 1 || user.role === 'Super Admin') return true;
+    if (!Array.isArray(user.permissions)) return false;
+    if (user.permissions.includes('*')) return true;
+    return user.permissions.includes(permKey);
+  };
 
   // Module States
   const [doctors, setDoctors] = useState([]);
@@ -392,10 +436,210 @@ export default function AdminDashboard() {
       api.get('/admin/specialities').then(res => res.data?.success && setSpecialities(res.data.data));
       loadDoctors();
     }
+    else if (tab === 'roles') loadRoles();
+    else if (tab === 'users') {
+      loadUsers();
+      loadRoles();
+    }
 
     if (window.innerWidth < 992) {
       setSidebarOpen(false);
     }
+  };
+
+  // Role Management Handlers
+  const loadRoles = () => {
+    api.get('/admin/roles')
+      .then(res => {
+        if (res.data?.success) setRolesList(res.data.data || []);
+      })
+      .catch(err => showToast(err.response?.data?.message || 'Failed to load roles', 'danger'));
+  };
+
+  const openRoleModal = (role = null) => {
+    setEditingRole(role);
+    if (role) {
+      setRoleForm({
+        pr_name: role.pr_name || '',
+        pr_desc: role.pr_desc || '',
+        permissions: Array.isArray(role.permissions) ? [...role.permissions] : []
+      });
+    } else {
+      setRoleForm({
+        pr_name: '',
+        pr_desc: '',
+        permissions: ['doctors']
+      });
+    }
+    setRoleModalOpen(true);
+  };
+
+  const closeRoleModal = () => {
+    setRoleModalOpen(false);
+    setEditingRole(null);
+  };
+
+  const togglePermission = (permKey) => {
+    setRoleForm(prev => {
+      const exists = prev.permissions.includes(permKey);
+      const updated = exists
+        ? prev.permissions.filter(k => k !== permKey)
+        : [...prev.permissions, permKey];
+      return { ...prev, permissions: updated };
+    });
+  };
+
+  const handleSelectAllPerms = () => {
+    setRoleForm(prev => ({
+      ...prev,
+      permissions: AVAILABLE_PERMISSIONS.map(p => p.key)
+    }));
+  };
+
+  const handleClearAllPerms = () => {
+    setRoleForm(prev => ({
+      ...prev,
+      permissions: []
+    }));
+  };
+
+  const handleSaveRole = (e) => {
+    e.preventDefault();
+    if (!roleForm.pr_name.trim()) {
+      showToast('Role Name is required', 'danger');
+      return;
+    }
+    const payload = {
+      pr_name: roleForm.pr_name.trim(),
+      pr_desc: roleForm.pr_desc.trim(),
+      permissions: roleForm.permissions
+    };
+    const req = editingRole
+      ? api.put(`/admin/roles/${editingRole.pr_id}`, payload)
+      : api.post('/admin/roles', payload);
+
+    req.then(res => {
+      showToast(res.data?.message || 'Role saved successfully!');
+      closeRoleModal();
+      loadRoles();
+    }).catch(err => {
+      showToast(err.response?.data?.message || 'Error saving role', 'danger');
+    });
+  };
+
+  const handleDeleteRole = (role) => {
+    if (role.pr_id === 1) {
+      showToast('Super Admin role cannot be deleted', 'danger');
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete role "${role.pr_name}"?`)) return;
+    api.delete(`/admin/roles/${role.pr_id}`)
+      .then(res => {
+        showToast(res.data?.message || 'Role deleted');
+        loadRoles();
+      })
+      .catch(err => {
+        showToast(err.response?.data?.message || 'Error deleting role', 'danger');
+      });
+  };
+
+  // User Management Handlers
+  const loadUsers = () => {
+    api.get('/admin/users')
+      .then(res => {
+        if (res.data?.success) setUsersList(res.data.data || []);
+      })
+      .catch(err => showToast(err.response?.data?.message || 'Failed to load users', 'danger'));
+  };
+
+  const openUserModal = (usr = null) => {
+    setEditingUser(usr);
+    if (usr) {
+      setUserForm({
+        name: usr.name || '',
+        username: usr.username || '',
+        email: usr.email || '',
+        phone: usr.phone || '',
+        designation: usr.designation || '',
+        password: '',
+        role_id: usr.suser_level || 1,
+        status: usr.suser_status !== undefined ? usr.suser_status : 1
+      });
+    } else {
+      setUserForm({
+        name: '',
+        username: '',
+        email: '',
+        phone: '',
+        designation: '',
+        password: '',
+        role_id: rolesList[0]?.pr_id || 1,
+        status: 1
+      });
+    }
+    setUserModalOpen(true);
+  };
+
+  const closeUserModal = () => {
+    setUserModalOpen(false);
+    setEditingUser(null);
+  };
+
+  const handleSaveUser = (e) => {
+    e.preventDefault();
+    if (!userForm.name.trim() || !userForm.username.trim()) {
+      showToast('Name and Username are required', 'danger');
+      return;
+    }
+    if (!editingUser && !userForm.password.trim()) {
+      showToast('Password is required for new user', 'danger');
+      return;
+    }
+
+    const payload = {
+      name: userForm.name.trim(),
+      username: userForm.username.trim(),
+      email: userForm.email.trim(),
+      phone: userForm.phone.trim(),
+      designation: userForm.designation.trim(),
+      role_id: parseInt(userForm.role_id, 10),
+      status: parseInt(userForm.status, 10)
+    };
+    if (userForm.password.trim()) {
+      payload.password = userForm.password.trim();
+    }
+
+    const req = editingUser
+      ? api.put(`/admin/users/${editingUser.id}`, payload)
+      : api.post('/admin/users', payload);
+
+    req.then(res => {
+      showToast(res.data?.message || 'User saved successfully!');
+      closeUserModal();
+      loadUsers();
+    }).catch(err => {
+      showToast(err.response?.data?.message || 'Error saving user', 'danger');
+    });
+  };
+
+  const handleDeleteUser = (usr) => {
+    if (usr.id === 1) {
+      showToast('Default Super Admin cannot be deleted', 'danger');
+      return;
+    }
+    if (user && user.id === usr.id) {
+      showToast('You cannot delete your own logged-in account', 'danger');
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete user "${usr.name}" (@${usr.username})?`)) return;
+    api.delete(`/admin/users/${usr.id}`)
+      .then(res => {
+        showToast(res.data?.message || 'User deleted');
+        loadUsers();
+      })
+      .catch(err => {
+        showToast(err.response?.data?.message || 'Error deleting user', 'danger');
+      });
   };
 
   // Status Toggle
@@ -501,7 +745,13 @@ export default function AdminDashboard() {
   const handleSaveDoctorSeo = (e) => {
     e.preventDefault();
     if (!selectedDoctorSeo) return;
-    api.post(`/admin/doctors/${selectedDoctorSeo.dr_id}/seo`, doctorSeoForm)
+    const cleanSeo = {
+      ...doctorSeoForm,
+      meta_title: cleanField(doctorSeoForm.meta_title),
+      meta_description: cleanField(doctorSeoForm.meta_description),
+      meta_keywords: cleanField(doctorSeoForm.meta_keywords)
+    };
+    api.post(`/admin/doctors/${selectedDoctorSeo.dr_id}/seo`, cleanSeo)
       .then(res => {
         showToast(res.data.message);
         closeDoctorSeoModal();
@@ -514,9 +764,18 @@ export default function AdminDashboard() {
     e.preventDefault();
 
     if (modalType === 'doctor') {
+      const cleanData = {
+        ...formData,
+        dr_name: cleanField(formData.dr_name),
+        dr_degree: cleanField(formData.dr_degree),
+        dr_education: cleanField(formData.dr_education),
+        dr_prev_exp: cleanField(formData.dr_prev_exp),
+        dr_exp_sum: cleanField(formData.dr_exp_sum),
+        dr_visit_hrs: cleanField(formData.dr_visit_hrs)
+      };
       const promise = editingItem
-        ? api.put(`/admin/doctors/${editingItem.dr_id}`, formData)
-        : api.post('/admin/doctors', formData);
+        ? api.put(`/admin/doctors/${editingItem.dr_id}`, cleanData)
+        : api.post('/admin/doctors', cleanData);
       promise.then(res => {
         showToast(res.data.message);
         closeModal();
@@ -725,146 +984,213 @@ export default function AdminDashboard() {
 
         {/* Sidebar Nav Links with High Visibility and Card-Pills */}
         <div className="p-2 flex-grow-1" style={{ overflowY: 'auto' }}>
-          <div className="sidebar-section-title px-2 pt-2 pb-1 text-uppercase font-weight-bold">
-            <span>Main Navigation</span>
-          </div>
+          {hasPermission('overview') && (
+            <>
+              <div className="sidebar-section-title px-2 pt-2 pb-1 text-uppercase font-weight-bold">
+                <span>Main Navigation</span>
+              </div>
 
-          <button
-            onClick={() => handleTabChange('overview')}
-            className={`sidebar-nav-btn ${activeTab === 'overview' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'overview' ? '#ffffff' : '#34d399' }}>
-              <i className="fas fa-chart-line"></i>
+              <button
+                onClick={() => handleTabChange('overview')}
+                className={`sidebar-nav-btn ${activeTab === 'overview' ? 'active' : ''}`}
+              >
+                <div className="sidebar-icon-box" style={{ color: activeTab === 'overview' ? '#ffffff' : '#34d399' }}>
+                  <i className="fas fa-chart-line"></i>
+                </div>
+                <span className="sidebar-nav-text">Dashboard & Analytics</span>
+                {activeTab === 'overview' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+              </button>
+            </>
+          )}
+
+          {(hasPermission('marketing') || hasPermission('pages_seo') || hasPermission('smtp_sms') || hasPermission('settings')) && (
+            <div className="sidebar-section-title px-2 pt-3 pb-1 text-uppercase font-weight-bold">
+              <span>SEO & Digital Marketing</span>
             </div>
-            <span className="sidebar-nav-text">Dashboard & Analytics</span>
-            {activeTab === 'overview' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
+          )}
+
+          {hasPermission('marketing') && (
+            <button
+              onClick={() => handleTabChange('marketing')}
+              className={`sidebar-nav-btn ${activeTab === 'marketing' ? 'active' : ''}`}
+            >
+              <div className="sidebar-icon-box" style={{ color: activeTab === 'marketing' ? '#ffffff' : '#f59e0b' }}>
+                <i className="fas fa-bullhorn"></i>
+              </div>
+              <span className="sidebar-nav-text">Google Tags & Meta Pixel</span>
+              {activeTab === 'marketing' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+            </button>
+          )}
+
+          {hasPermission('pages_seo') && (
+            <button
+              onClick={() => handleTabChange('pages_seo')}
+              className={`sidebar-nav-btn ${activeTab === 'pages_seo' ? 'active' : ''}`}
+            >
+              <div className="sidebar-icon-box" style={{ color: activeTab === 'pages_seo' ? '#ffffff' : '#38bdf8' }}>
+                <i className="fas fa-globe"></i>
+              </div>
+              <span className="sidebar-nav-text">Page SEO & Metadata</span>
+              {activeTab === 'pages_seo' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+            </button>
+          )}
+
+          {hasPermission('smtp_sms') && (
+            <button
+              onClick={() => handleTabChange('smtp_sms')}
+              className={`sidebar-nav-btn ${activeTab === 'smtp_sms' ? 'active' : ''}`}
+            >
+              <div className="sidebar-icon-box" style={{ color: activeTab === 'smtp_sms' ? '#ffffff' : '#818cf8' }}>
+                <i className="fas fa-envelope-open-text"></i>
+              </div>
+              <span className="sidebar-nav-text">SMTP & SMS Gateway</span>
+              {activeTab === 'smtp_sms' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+            </button>
+          )}
+
+          {hasPermission('settings') && (
+            <button
+              onClick={() => handleTabChange('settings')}
+              className={`sidebar-nav-btn ${activeTab === 'settings' ? 'active' : ''}`}
+            >
+              <div className="sidebar-icon-box" style={{ color: activeTab === 'settings' ? '#ffffff' : '#94a3b8' }}>
+                <i className="fas fa-sliders-h"></i>
+              </div>
+              <span className="sidebar-nav-text">General Hospital Settings</span>
+              {activeTab === 'settings' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+            </button>
+          )}
+
+          {(hasPermission('doctors') || hasPermission('specialities')) && (
+            <div className="sidebar-section-title px-2 pt-3 pb-1 text-uppercase font-weight-bold">
+              <span>Clinical & Medical</span>
+            </div>
+          )}
+
+          {hasPermission('doctors') && (
+            <button
+              onClick={() => handleTabChange('doctors')}
+              className={`sidebar-nav-btn ${activeTab === 'doctors' ? 'active' : ''}`}
+            >
+              <div className="sidebar-icon-box" style={{ color: activeTab === 'doctors' ? '#ffffff' : '#10b981' }}>
+                <i className="fas fa-user-md"></i>
+              </div>
+              <span className="sidebar-nav-text">ডক্টর লিস্ট (Doctor List)</span>
+              {activeTab === 'doctors' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+            </button>
+          )}
+
+          {hasPermission('specialities') && (
+            <button
+              onClick={() => handleTabChange('specialities')}
+              className={`sidebar-nav-btn ${activeTab === 'specialities' ? 'active' : ''}`}
+            >
+              <div className="sidebar-icon-box" style={{ color: activeTab === 'specialities' ? '#ffffff' : '#06b6d4' }}>
+                <i className="fas fa-stethoscope"></i>
+              </div>
+              <span className="sidebar-nav-text">Specialities & Departments</span>
+              {activeTab === 'specialities' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+            </button>
+          )}
+
+          {(hasPermission('news') || hasPermission('photos') || hasPermission('videos')) && (
+            <div className="sidebar-section-title px-2 pt-3 pb-1 text-uppercase font-weight-bold">
+              <span>News & Media Center</span>
+            </div>
+          )}
+
+          {hasPermission('news') && (
+            <button
+              onClick={() => handleTabChange('news')}
+              className={`sidebar-nav-btn ${activeTab === 'news' ? 'active' : ''}`}
+            >
+              <div className="sidebar-icon-box" style={{ color: activeTab === 'news' ? '#ffffff' : '#fbbf24' }}>
+                <i className="fas fa-newspaper"></i>
+              </div>
+              <span className="sidebar-nav-text">News & Hospital Events</span>
+              {activeTab === 'news' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+            </button>
+          )}
+
+          {hasPermission('photos') && (
+            <button
+              onClick={() => handleTabChange('photos')}
+              className={`sidebar-nav-btn ${activeTab === 'photos' ? 'active' : ''}`}
+            >
+              <div className="sidebar-icon-box" style={{ color: activeTab === 'photos' ? '#ffffff' : '#a78bfa' }}>
+                <i className="fas fa-images"></i>
+              </div>
+              <span className="sidebar-nav-text">Photo Gallery</span>
+              {activeTab === 'photos' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+            </button>
+          )}
+
+          {hasPermission('videos') && (
+            <button
+              onClick={() => handleTabChange('videos')}
+              className={`sidebar-nav-btn ${activeTab === 'videos' ? 'active' : ''}`}
+            >
+              <div className="sidebar-icon-box" style={{ color: activeTab === 'videos' ? '#ffffff' : '#f87171' }}>
+                <i className="fab fa-youtube"></i>
+              </div>
+              <span className="sidebar-nav-text">Video Gallery (YouTube)</span>
+              {activeTab === 'videos' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+            </button>
+          )}
+
+          {hasPermission('team') && (
+            <>
+              <div className="sidebar-section-title px-2 pt-3 pb-1 text-uppercase font-weight-bold">
+                <span>Leadership</span>
+              </div>
+
+              <button
+                onClick={() => handleTabChange('team')}
+                className={`sidebar-nav-btn ${activeTab === 'team' ? 'active' : ''}`}
+              >
+                <div className="sidebar-icon-box" style={{ color: activeTab === 'team' ? '#ffffff' : '#fb923c' }}>
+                  <i className="fas fa-users-cog"></i>
+                </div>
+                <span className="sidebar-nav-text">Management Team (Tiers)</span>
+                {activeTab === 'team' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+              </button>
+            </>
+          )}
+
+          {/* USER MANAGEMENT (ইউজার ও রোল ম্যানেজমেন্ট) */}
+          {hasPermission('users') && (
+            <>
+              <div className="sidebar-section-title px-2 pt-3 pb-1 text-uppercase font-weight-bold">
+                <span>User & Access Control</span>
+              </div>
+
+              <button
+                onClick={() => handleTabChange('users')}
+                className={`sidebar-nav-btn ${activeTab === 'users' ? 'active' : ''}`}
+              >
+                <div className="sidebar-icon-box" style={{ color: activeTab === 'users' ? '#ffffff' : '#38bdf8' }}>
+                  <i className="fas fa-users"></i>
+                </div>
+                <span className="sidebar-nav-text">User List (ইউজার)</span>
+                {activeTab === 'users' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+              </button>
+
+              <button
+                onClick={() => handleTabChange('roles')}
+                className={`sidebar-nav-btn ${activeTab === 'roles' ? 'active' : ''}`}
+              >
+                <div className="sidebar-icon-box" style={{ color: activeTab === 'roles' ? '#ffffff' : '#c084fc' }}>
+                  <i className="fas fa-user-shield"></i>
+                </div>
+                <span className="sidebar-nav-text">Role & Permissions (রোল)</span>
+                {activeTab === 'roles' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
+              </button>
+            </>
+          )}
 
           <div className="sidebar-section-title px-2 pt-3 pb-1 text-uppercase font-weight-bold">
-            <span>SEO & Digital Marketing</span>
+            <span>Account</span>
           </div>
-
-          <button
-            onClick={() => handleTabChange('marketing')}
-            className={`sidebar-nav-btn ${activeTab === 'marketing' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'marketing' ? '#ffffff' : '#f59e0b' }}>
-              <i className="fas fa-bullhorn"></i>
-            </div>
-            <span className="sidebar-nav-text">Google Tags & Meta Pixel</span>
-            {activeTab === 'marketing' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
-
-          <button
-            onClick={() => handleTabChange('pages_seo')}
-            className={`sidebar-nav-btn ${activeTab === 'pages_seo' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'pages_seo' ? '#ffffff' : '#38bdf8' }}>
-              <i className="fas fa-globe"></i>
-            </div>
-            <span className="sidebar-nav-text">Page SEO & Metadata</span>
-            {activeTab === 'pages_seo' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
-
-          <button
-            onClick={() => handleTabChange('smtp_sms')}
-            className={`sidebar-nav-btn ${activeTab === 'smtp_sms' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'smtp_sms' ? '#ffffff' : '#818cf8' }}>
-              <i className="fas fa-envelope-open-text"></i>
-            </div>
-            <span className="sidebar-nav-text">SMTP & SMS Gateway</span>
-            {activeTab === 'smtp_sms' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
-
-          <button
-            onClick={() => handleTabChange('settings')}
-            className={`sidebar-nav-btn ${activeTab === 'settings' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'settings' ? '#ffffff' : '#94a3b8' }}>
-              <i className="fas fa-sliders-h"></i>
-            </div>
-            <span className="sidebar-nav-text">General Hospital Settings</span>
-            {activeTab === 'settings' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
-
-          <div className="sidebar-section-title px-2 pt-3 pb-1 text-uppercase font-weight-bold">
-            <span>Clinical & Medical</span>
-          </div>
-
-          <button
-            onClick={() => handleTabChange('doctors')}
-            className={`sidebar-nav-btn ${activeTab === 'doctors' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'doctors' ? '#ffffff' : '#10b981' }}>
-              <i className="fas fa-user-md"></i>
-            </div>
-            <span className="sidebar-nav-text">Doctor List</span>
-            {activeTab === 'doctors' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
-
-          <button
-            onClick={() => handleTabChange('specialities')}
-            className={`sidebar-nav-btn ${activeTab === 'specialities' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'specialities' ? '#ffffff' : '#06b6d4' }}>
-              <i className="fas fa-stethoscope"></i>
-            </div>
-            <span className="sidebar-nav-text">Specialities & Departments</span>
-            {activeTab === 'specialities' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
-
-          <div className="sidebar-section-title px-2 pt-3 pb-1 text-uppercase font-weight-bold">
-            <span>News & Media Center</span>
-          </div>
-
-          <button
-            onClick={() => handleTabChange('news')}
-            className={`sidebar-nav-btn ${activeTab === 'news' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'news' ? '#ffffff' : '#fbbf24' }}>
-              <i className="fas fa-newspaper"></i>
-            </div>
-            <span className="sidebar-nav-text">News & Hospital Events</span>
-            {activeTab === 'news' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
-
-          <button
-            onClick={() => handleTabChange('photos')}
-            className={`sidebar-nav-btn ${activeTab === 'photos' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'photos' ? '#ffffff' : '#a78bfa' }}>
-              <i className="fas fa-images"></i>
-            </div>
-            <span className="sidebar-nav-text">Photo Gallery</span>
-            {activeTab === 'photos' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
-
-          <button
-            onClick={() => handleTabChange('videos')}
-            className={`sidebar-nav-btn ${activeTab === 'videos' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'videos' ? '#ffffff' : '#f87171' }}>
-              <i className="fab fa-youtube"></i>
-            </div>
-            <span className="sidebar-nav-text">Video Gallery (YouTube)</span>
-            {activeTab === 'videos' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
-
-          <div className="sidebar-section-title px-2 pt-3 pb-1 text-uppercase font-weight-bold">
-            <span>Leadership & Security</span>
-          </div>
-
-          <button
-            onClick={() => handleTabChange('team')}
-            className={`sidebar-nav-btn ${activeTab === 'team' ? 'active' : ''}`}
-          >
-            <div className="sidebar-icon-box" style={{ color: activeTab === 'team' ? '#ffffff' : '#fb923c' }}>
-              <i className="fas fa-users-cog"></i>
-            </div>
-            <span className="sidebar-nav-text">Management Team (Tiers)</span>
-            {activeTab === 'team' && <i className="fas fa-chevron-right ml-auto small opacity-75"></i>}
-          </button>
 
           <button
             onClick={() => handleTabChange('security')}
@@ -928,12 +1254,14 @@ export default function AdminDashboard() {
               {activeTab === 'smtp_sms' && 'SMTP Mail Server & SMS Gateway Configuration'}
               {activeTab === 'settings' && 'General Hospital Settings (Header, Footer & Brand)'}
               {activeTab === 'pages_seo' && 'Page Management & SEO Configurations'}
-              {activeTab === 'doctors' && 'Doctors Directory & Individual SEO Optimizer'}
+              {activeTab === 'doctors' && 'ডক্টর লিস্ট (Doctor List & Chamber Hours)'}
               {activeTab === 'specialities' && 'Medical Specialities & Clinical Departments'}
               {activeTab === 'news' && 'News & Hospital Events Manager'}
               {activeTab === 'photos' && 'Hospital Photo Gallery'}
               {activeTab === 'videos' && 'Hospital Video Gallery (YouTube Stream)'}
               {activeTab === 'team' && 'Management Team Hierarchy & Leadership'}
+              {activeTab === 'users' && 'ইউজার ম্যানেজমেন্ট (System Users & Staff)'}
+              {activeTab === 'roles' && 'রোল ও পারমিশন ম্যানেজমেন্ট (Role-Based Access Control)'}
               {activeTab === 'security' && 'Admin Account Security & Password'}
             </h5>
           </div>
@@ -2317,6 +2645,215 @@ export default function AdminDashboard() {
               </form>
             </div>
           )}
+
+          {/* TAB: USER MANAGEMENT (ইউজার ম্যানেজমেন্ট) */}
+          {activeTab === 'users' && (
+            <div className="card border-0 shadow-sm rounded-lg p-4 bg-white">
+              <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                <div>
+                  <h5 className="font-weight-bold text-dark mb-1">
+                    <i className="fas fa-users mr-2" style={{ color: '#00984A' }}></i>
+                    User Management (ইউজার ম্যানেজমেন্ট)
+                  </h5>
+                  <p className="text-muted small mb-0">Create and manage multiple administrative staff users, roles, and credentials.</p>
+                </div>
+                <button
+                  onClick={() => openUserModal()}
+                  className="btn btn-success font-weight-bold mt-2 mt-sm-0"
+                  style={{ backgroundColor: '#00984A' }}
+                >
+                  <i className="fas fa-user-plus mr-1"></i> Add New User (নতুন ইউজার)
+                </button>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table table-hover table-striped align-middle">
+                  <thead className="thead-light">
+                    <tr>
+                      <th>User Info</th>
+                      <th>Username</th>
+                      <th>Assigned Role</th>
+                      <th>Contact Details</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersList.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="text-center py-4 text-muted">
+                          <i className="fas fa-users-slash fa-2x mb-2 d-block text-secondary"></i>
+                          No system users found.
+                        </td>
+                      </tr>
+                    ) : (
+                      usersList.map((u) => (
+                        <tr key={u.id}>
+                          <td>
+                            <div className="font-weight-bold text-dark">{u.name}</div>
+                            <div className="text-muted small">{u.designation || 'Administrative Staff'}</div>
+                          </td>
+                          <td>
+                            <span className="badge badge-light border text-monospace text-dark px-2 py-1">
+                              @{u.username}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge px-2 py-1 ${u.suser_level === 1 ? 'badge-danger' : 'badge-primary'}`} style={{ fontSize: '11px' }}>
+                              <i className={`fas ${u.suser_level === 1 ? 'fa-crown' : 'fa-user-tag'} mr-1`}></i>
+                              {u.role_name || u.role || 'Staff'}
+                            </span>
+                          </td>
+                          <td className="small">
+                            <div><i className="fas fa-envelope text-muted mr-1"></i> {u.email || '—'}</div>
+                            <div><i className="fas fa-phone text-muted mr-1"></i> {u.phone || '—'}</div>
+                          </td>
+                          <td>
+                            <span className={`badge ${u.suser_status === 1 ? 'badge-success' : 'badge-secondary'}`}>
+                              {u.suser_status === 1 ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => openUserModal(u)}
+                              className="btn btn-sm btn-outline-primary mr-1"
+                              title="Edit User"
+                            >
+                              <i className="fas fa-edit"></i> Edit
+                            </button>
+                            {u.id !== 1 && (
+                              <button
+                                onClick={() => handleDeleteUser(u)}
+                                className="btn btn-sm btn-outline-danger"
+                                title="Delete User"
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: ROLE & PERMISSION MANAGEMENT (রোল ও পারমিশন) */}
+          {activeTab === 'roles' && (
+            <div className="card border-0 shadow-sm rounded-lg p-4 bg-white">
+              <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                <div>
+                  <h5 className="font-weight-bold text-dark mb-1">
+                    <i className="fas fa-user-shield mr-2" style={{ color: '#00984A' }}></i>
+                    Role & Access Permissions (রোল ও পারমিশন ম্যানেজমেন্ট)
+                  </h5>
+                  <p className="text-muted small mb-0">Define custom roles and select exact page access permissions using checkboxes.</p>
+                </div>
+                <button
+                  onClick={() => openRoleModal()}
+                  className="btn btn-success font-weight-bold mt-2 mt-sm-0"
+                  style={{ backgroundColor: '#00984A' }}
+                >
+                  <i className="fas fa-shield-alt mr-1"></i> Create New Role (নতুন রোল)
+                </button>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table table-hover table-striped align-middle">
+                  <thead className="thead-light">
+                    <tr>
+                      <th style={{ width: '80px' }}>ID</th>
+                      <th>Role Name & Description</th>
+                      <th style={{ width: '130px' }}>Assigned Users</th>
+                      <th>Granted Permissions</th>
+                      <th style={{ width: '160px' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rolesList.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="text-center py-4 text-muted">
+                          <i className="fas fa-shield-virus fa-2x mb-2 d-block text-secondary"></i>
+                          No roles found.
+                        </td>
+                      </tr>
+                    ) : (
+                      rolesList.map((r) => {
+                        const isSuper = r.pr_id === 1 || r.pr_name === 'Super Admin' || r.permissions?.includes('*');
+                        return (
+                          <tr key={r.pr_id}>
+                            <td className="font-weight-bold text-muted">#{r.pr_id}</td>
+                            <td>
+                              <div className="font-weight-bold text-dark">{r.pr_name}</div>
+                              <div className="text-muted small">{r.pr_desc || 'No description provided'}</div>
+                            </td>
+                            <td>
+                              <span className="badge badge-secondary px-2 py-1">
+                                {r.user_count || 0} Users
+                              </span>
+                            </td>
+                            <td>
+                              {isSuper ? (
+                                <span className="badge badge-danger px-2 py-1">
+                                  <i className="fas fa-crown mr-1"></i> Full Access (All Pages & Features)
+                                </span>
+                              ) : (
+                                <div className="d-flex flex-wrap gap-1">
+                                  {r.permissions && r.permissions.length > 0 ? (
+                                    r.permissions.map(permKey => {
+                                      const mod = AVAILABLE_PERMISSIONS.find(m => m.key === permKey);
+                                      return (
+                                        <span
+                                          key={permKey}
+                                          className="badge badge-light border text-dark mr-1 mb-1"
+                                          style={{ fontSize: '11px', backgroundColor: '#f1f5f9' }}
+                                        >
+                                          <i className={`fas ${mod?.icon || 'fa-check'} text-success mr-1`}></i>
+                                          {mod?.label || permKey}
+                                        </span>
+                                      );
+                                    })
+                                  ) : (
+                                    <span className="text-muted small">No permissions granted</span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              {r.pr_id !== 1 ? (
+                                <>
+                                  <button
+                                    onClick={() => openRoleModal(r)}
+                                    className="btn btn-sm btn-outline-primary mr-1"
+                                    title="Edit Role & Permissions"
+                                  >
+                                    <i className="fas fa-edit"></i> Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteRole(r)}
+                                    className="btn btn-sm btn-outline-danger"
+                                    title="Delete Role"
+                                  >
+                                    <i className="fas fa-trash-alt"></i>
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="badge badge-light text-muted border px-2 py-1 small">
+                                  Protected System Role
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -2893,6 +3430,265 @@ export default function AdminDashboard() {
                     <i className="fas fa-check-circle mr-1"></i> Save Changes
                   </button>
                 </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          5. ROLE & PERMISSIONS CREATE / EDIT MODAL
+          ======================================================== */}
+      {roleModalOpen && (
+        <div
+          className="position-fixed w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ top: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 999999, padding: '20px' }}
+        >
+          <div
+            className="card border-0 shadow-lg rounded-lg overflow-hidden w-100 d-flex flex-column"
+            style={{ maxWidth: '820px', maxHeight: '90vh' }}
+          >
+            <div className="card-header bg-dark text-white d-flex align-items-center justify-content-between py-3 flex-shrink-0" style={{ backgroundColor: '#0c1a14' }}>
+              <h6 className="font-weight-bold mb-0 text-white">
+                <i className="fas fa-user-shield mr-2 text-success"></i>
+                {editingRole ? `Edit Role: ${editingRole.pr_name}` : 'Create New Access Role (নতুন রোল তৈরি)'}
+              </h6>
+              <button onClick={closeRoleModal} className="btn btn-sm btn-link text-white p-0">
+                <i className="fas fa-times fa-lg"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRole} className="d-flex flex-column flex-grow-1 overflow-hidden" style={{ minHeight: 0 }}>
+              <div className="p-3 p-md-4 bg-white flex-grow-1" style={{ overflowY: 'auto' }}>
+                <div className="row mb-3">
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Role Name (রোলের নাম) *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Doctor Manager, SEO Specialist, Content Editor"
+                      value={roleForm.pr_name}
+                      onChange={(e) => setRoleForm({ ...roleForm, pr_name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Description (বিবরণ)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Permission to manage doctor list and doctor profiles"
+                      value={roleForm.pr_desc}
+                      onChange={(e) => setRoleForm({ ...roleForm, pr_desc: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="border-top pt-3 mb-2">
+                  <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                    <div>
+                      <label className="font-weight-bold text-dark mb-0">
+                        <i className="fas fa-key text-warning mr-1"></i> Module Page Permissions (কোন কোন পেজের পারমিশন পাবে)
+                      </label>
+                      <div className="small text-muted">Check each page or feature the users of this role are allowed to see:</div>
+                    </div>
+                    <div className="mt-2 mt-sm-0">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllPerms}
+                        className="btn btn-xs btn-outline-success mr-2 font-weight-bold px-2 py-1"
+                      >
+                        <i className="fas fa-check-double mr-1"></i> Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearAllPerms}
+                        className="btn btn-xs btn-outline-secondary font-weight-bold px-2 py-1"
+                      >
+                        <i className="fas fa-times mr-1"></i> Clear All
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="row">
+                    {AVAILABLE_PERMISSIONS.map(p => {
+                      const isChecked = roleForm.permissions.includes(p.key);
+                      return (
+                        <div key={p.key} className="col-md-6 col-lg-4 mb-2">
+                          <div
+                            onClick={() => togglePermission(p.key)}
+                            className={`p-2 rounded border cursor-pointer d-flex align-items-center ${isChecked ? 'bg-light border-success' : 'bg-white'}`}
+                            style={{ cursor: 'pointer', transition: 'all 0.15s' }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {}}
+                              className="mr-2"
+                              style={{ width: '16px', height: '16px', accentColor: '#00984A', cursor: 'pointer' }}
+                            />
+                            <div className="text-truncate">
+                              <div className={`small font-weight-bold ${isChecked ? 'text-success' : 'text-dark'}`}>
+                                <i className={`fas ${p.icon} mr-1 text-muted`}></i> {p.label}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-light border-top d-flex justify-content-between align-items-center flex-shrink-0">
+                <button type="button" onClick={closeRoleModal} className="btn btn-secondary px-4">
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-success px-4 font-weight-bold" style={{ backgroundColor: '#00984A' }}>
+                  <i className="fas fa-save mr-1"></i> {editingRole ? 'Update Role' : 'Create Role'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          6. USER CREATE / EDIT MODAL
+          ======================================================== */}
+      {userModalOpen && (
+        <div
+          className="position-fixed w-100 h-100 d-flex align-items-center justify-content-center"
+          style={{ top: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 999999, padding: '20px' }}
+        >
+          <div
+            className="card border-0 shadow-lg rounded-lg overflow-hidden w-100 d-flex flex-column"
+            style={{ maxWidth: '680px', maxHeight: '90vh' }}
+          >
+            <div className="card-header bg-dark text-white d-flex align-items-center justify-content-between py-3 flex-shrink-0" style={{ backgroundColor: '#0c1a14' }}>
+              <h6 className="font-weight-bold mb-0 text-white">
+                <i className="fas fa-user-plus mr-2 text-success"></i>
+                {editingUser ? `Edit User: ${editingUser.name}` : 'Add New System User (নতুন ইউজার তৈরি)'}
+              </h6>
+              <button onClick={closeUserModal} className="btn btn-sm btn-link text-white p-0">
+                <i className="fas fa-times fa-lg"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="d-flex flex-column flex-grow-1 overflow-hidden" style={{ minHeight: 0 }}>
+              <div className="p-3 p-md-4 bg-white flex-grow-1" style={{ overflowY: 'auto' }}>
+                <div className="row">
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Full Name (ইউজারের নাম) *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Dr. Rafiqul Islam / Md. Karim"
+                      value={userForm.name}
+                      onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Username (ইউজারনেম) *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. rafiqul / manager01"
+                      value={userForm.username}
+                      onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                      disabled={!!editingUser}
+                      required
+                    />
+                    {editingUser && <small className="text-muted">Username cannot be changed once created.</small>}
+                  </div>
+
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Assigned Role (নির্ধারিত রোল) *</label>
+                    <select
+                      className="form-control"
+                      value={userForm.role_id}
+                      onChange={(e) => setUserForm({ ...userForm, role_id: e.target.value })}
+                      required
+                    >
+                      {rolesList.map(r => (
+                        <option key={r.pr_id} value={r.pr_id}>
+                          {r.pr_name} {r.pr_id === 1 ? '(Full Super Admin Access)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">
+                      Password (পাসওয়ার্ড) {editingUser ? '(Leave empty to keep current)' : '*'}
+                    </label>
+                    <input
+                      type="password"
+                      className="form-control"
+                      placeholder={editingUser ? '••••••••' : 'Min 6 characters'}
+                      value={userForm.password}
+                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                      minLength={editingUser ? undefined : 6}
+                      required={!editingUser}
+                    />
+                  </div>
+
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Email Address (ইমেইল)</label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      placeholder="user@popular-hospital.com"
+                      value={userForm.email}
+                      onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Mobile / Phone (ফোন নম্বর)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="017XXXXXXXX"
+                      value={userForm.phone}
+                      onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Designation (পদবি)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. IT Executive / Senior SEO Officer"
+                      value={userForm.designation}
+                      onChange={(e) => setUserForm({ ...userForm, designation: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="col-md-6 form-group">
+                    <label className="font-weight-bold small text-dark">Account Status (স্ট্যাটাস)</label>
+                    <select
+                      className="form-control"
+                      value={userForm.status}
+                      onChange={(e) => setUserForm({ ...userForm, status: parseInt(e.target.value) })}
+                    >
+                      <option value={1}>Active (সক্রিয়)</option>
+                      <option value={0}>Inactive (নিষ্ক্রিয়)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-light border-top d-flex justify-content-between align-items-center flex-shrink-0">
+                <button type="button" onClick={closeUserModal} className="btn btn-secondary px-4">
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-success px-4 font-weight-bold" style={{ backgroundColor: '#00984A' }}>
+                  <i className="fas fa-save mr-1"></i> {editingUser ? 'Save Changes' : 'Create User'}
+                </button>
               </div>
             </form>
           </div>

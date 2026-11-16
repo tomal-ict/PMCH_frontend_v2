@@ -1,1 +1,285 @@
-/* Add here all your CSS customizations */
+/* ==========================================================================
+   POPULAR MEDICAL COLLEGE HOSPITAL - TYPOGRAPHY & HEADER STYLING
+   Exact match with https://www.populardiagnostic.com/
+   ========================================================================== */
+
+/* 1. Viewport & Sticky Navigation Fix (Prevent clipping of position: sticky) */
+html {
+  font-size: 16px;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.625 !important; /* 26px line height */
+  color: #4b5563 !important;     /* text-gray-600: rgb(75, 85, 99) */
+  background-color: #ffffff;
+  overflow-x: clip !important;
+}
+
+/* Ensure React root and flex containers don't trap sticky position */
+#root, .min-vh-100, .body {
+  overflow: visible !important;
+}
+
+/* 2. Paragraphs & Content Text (Exact match: Ubuntu/Poppins 16px, line-height 1.625) */
+p:not(#footer p):not(.footer-copyright p), .card-text, .entry-content, .lead-sm, article, .text-content, .service-desc {
+  font-family: 'Ubuntu', 'Poppins', sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.625 !important;
+  color: #4b5563 !important;
+  margin-bottom: 1.15rem;
+}
+
+/* 3. Headings Scale (Exact match: Ubuntu, bold, #1f2937 / #006642) */
+h1, .h1, h2, .h2, h3, .h3, h4, .h4, h5, .h5, h6, .h6 {
+  font-family: 'Ubuntu', sans-serif !important;
+  font-weight: 700 !important;
+  color: #1f2937 !important; /* text-gray-800 */
+}
+
+h1, .h1 {
+  font-size: 2rem !important;      /* 32px */
+  line-height: 1.25 !important;
+  letter-spacing: -0.02em;
+}
+
+h2, .h2 {
+  font-size: 1.75rem !important;   /* 28px */
+  line-height: 1.25 !important;
+  letter-spacing: -0.01em;
+}
+
+h3, .h3 {
+  font-size: 1.35rem !important;   /* 21.6px */
+  line-height: 1.375 !important;
+}
+
+h4, .h4 {
+  font-size: 1.15rem !important;   /* 18.4px */
+  line-height: 1.4 !important;
+}
+
+h5, .h5 {
+  font-size: 1rem !important;      /* 16px */
+  line-height: 1.4 !important;
+}
+
+h6, .h6 {
+  font-size: 0.875rem !important;  /* 14px */
+  line-height: 1.4 !important;
+}
+
+/* 4. Desktop Navigation Links (Ubuntu 14px, font-bold 700, tracking-wide) */
+#header .nav-link,
+.main-sticky-navbar .nav-link {
+  font-family: 'Ubuntu', sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.025em !important;
+  color: #374151 !important; /* text-gray-700 */
+  transition: all 0.2s ease-in-out;
+}
+
+#header .nav-link:hover,
+.main-sticky-navbar .nav-link:hover {
+  color: #006642 !important; /* text-PDCL-green */
+}
+
+/* 5. Sticky Navigation Bar Locking (Anchored permanently at top: 0 on scroll) */
+#header.main-sticky-navbar,
+header#header {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  z-index: 9999 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important;
+  transition: box-shadow 0.25s ease-in-out, background-color 0.25s ease-in-out !important;
+}
+
+#header.main-sticky-navbar.is-scrolled {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* 6. Small elements & Badges */
+.small, small {
+  font-size: 14px !important;
+  line-height: 1.5;
+}
+
+.badge {
+  font-family: 'Ubuntu', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 0.35em 0.65em;
+  border-radius: 4px;
+}
+
+/* 7. Buttons (Ubuntu, Bold 700) */
+.btn {
+  font-family: 'Ubuntu', sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.015em;
+  border-radius: 5px;
+  transition: all 0.2s ease-in-out;
+}
+
+/* 8. Tables text readability */
+.table {
+  font-size: 15px;
+  color: #4b5563;
+}
+
+.table th {
+  font-family: 'Ubuntu', sans-serif;
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+/* Hover transitions */
+.hover-opacity:hover {
+  opacity: 0.85;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* ==========================================================================
+   HEADER LOGO RESPONSIVE STYLING
+   Enlarged for desktops while seamlessly adapting to smaller screens & mobiles
+   without breaking navigation buttons
+   ========================================================================== */
+.pmch-header-logo {
+  height: auto;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  transition: all 0.25s ease-in-out;
+}
+
+/* Extra Large Desktops (>= 1200px) - Bold, prominent, readable logo */
+@media (min-width: 1200px) {
+  .pmch-header-logo {
+    max-height: 64px !important;
+    max-width: 330px !important;
+  }
+}
+
+/* Laptops / Desktops (992px to 1199.98px) - Balanced to protect single-line nav */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .pmch-header-logo {
+    max-height: 48px !important;
+    max-width: 250px !important;
+  }
+}
+
+/* Tablets (768px to 991.98px) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .pmch-header-logo {
+    max-height: 52px !important;
+    max-width: 270px !important;
+  }
+}
+
+/* Mobile Devices (576px to 767.98px) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .pmch-header-logo {
+    max-height: 46px !important;
+    max-width: 235px !important;
+  }
+}
+
+/* Small Mobile Devices (< 576px) */
+@media (max-width: 575.98px) {
+  .pmch-header-logo {
+    max-height: 42px !important;
+    max-width: 205px !important;
+  }
+}
+
+/* Extra Small Phones (< 380px) */
+@media (max-width: 379.98px) {
+  .pmch-header-logo {
+    max-height: 36px !important;
+    max-width: 175px !important;
+  }
+}
+
+/* ==========================================================================
+   FOOTER STYLING - CRISP WHITE TEXT & ENHANCED LEGIBILITY
+   ========================================================================== */
+#footer {
+  color: #ffffff !important;
+}
+
+#footer p,
+#footer span,
+#footer strong,
+#footer div,
+#footer a:not(.btn):not(.badge),
+.footer-copyright,
+.footer-copyright p,
+.footer-copyright span {
+  color: #ffffff !important;
+}
+
+#footer .footer-contact-info {
+  font-size: 17px !important;
+  line-height: 1.85 !important;
+  color: #ffffff !important;
+}
+
+#footer .footer-contact-info span,
+#footer .footer-contact-info p,
+#footer .footer-contact-info div {
+  font-size: 17px !important;
+  color: #ffffff !important;
+}
+
+#footer .footer-contact-info strong {
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+#footer .footer-contact-info a {
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  transition: opacity 0.2s ease, text-decoration 0.2s ease;
+}
+
+#footer .footer-contact-info a:hover {
+  color: #e2e8f0 !important;
+  text-decoration: underline !important;
+}
+
+#footer .footer-copyright p,
+#footer .footer-copyright .copyright-text {
+  font-size: 15.5px !important;
+  color: #ffffff !important;
+  line-height: 1.6 !important;
+}
+
+#footer .footer-views-counter,
+.footer-views-counter {
+  background: transparent !important;
+  color: #ffffff !important;
+  font-size: 15.5px !important;
+}
+
+#footer .footer-views-counter span,
+#footer .footer-views-counter i,
+.footer-views-counter span,
+.footer-views-counter i {
+  color: #ffffff !important;
+}

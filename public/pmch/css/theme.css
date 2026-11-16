@@ -5,17 +5,17 @@ Theme Version:	7.1.0
 */
 html {
 	direction: ltr;
-	overflow-x: hidden;
+	overflow-x: clip;
 	-webkit-box-shadow: none !important;
 	box-shadow: none !important;
 }
 
 body {
 	background-color: #FFF;
-	color: #777;
-	font-family: "Open Sans", Arial, sans-serif;
-	font-size: 14px;
-	line-height: 26px;
+	color: #4b5563;
+	font-family: "Poppins", "Ubuntu", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	font-size: 16px;
+	line-height: 1.625;
 	margin: 0;
 }
 
@@ -28,7 +28,7 @@ body a {
 }
 
 html.safari .body {
-	overflow-x: hidden;
+	overflow-x: clip;
 }
 
 li {
@@ -38,13 +38,15 @@ li {
 /* Responsive */
 @media (max-width: 575px) {
 	body {
-		font-size: 13px;
+		font-size: 15px;
 	}
 }
 /* Header */
 #header {
-	position: relative;
-	z-index: 1030;
+	position: -webkit-sticky;
+	position: sticky;
+	top: 0;
+	z-index: 9999;
 }
 
 #header .header-body {

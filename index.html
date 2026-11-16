@@ -13,8 +13,10 @@
     <link rel="shortcut icon" href="/pmch/img/favicon.ico" type="image/x-icon" />
     <link rel="apple-touch-icon" href="/pmch/img/apple-touch-icon.png" />
 
-    <!-- Web Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800%7CShadows+Into+Light" rel="stylesheet" type="text/css" />
+    <!-- Web Fonts - Exact match with populardiagnostic.com (Poppins & Ubuntu) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Ubuntu:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet" />
 
     <!-- Vendor CSS -->
     <link rel="stylesheet" href="/pmch/vendor/bootstrap/css/bootstrap.min.css" />
@@ -22,15 +24,133 @@
     <link rel="stylesheet" href="/pmch/vendor/animate/animate.min.css" />
     <link rel="stylesheet" href="/pmch/vendor/simple-line-icons/css/simple-line-icons.min.css" />
 
-    <!-- Theme CSS -->
-    <link rel="stylesheet" href="/pmch/css/theme.css" />
-    <link rel="stylesheet" href="/pmch/css/theme-elements.css" />
-    <link rel="stylesheet" href="/pmch/css/theme-blog.css" />
-    <link rel="stylesheet" href="/pmch/css/theme-shop.css" />
-    <link rel="stylesheet" href="/pmch/css/skins/default.css" />
-    <link rel="stylesheet" href="/pmch/css/custom.css" />
+    <!-- Theme CSS with Cache Busting -->
+    <link rel="stylesheet" href="/pmch/css/theme.css?v=2.1" />
+    <link rel="stylesheet" href="/pmch/css/theme-elements.css?v=2.1" />
+    <link rel="stylesheet" href="/pmch/css/theme-blog.css?v=2.1" />
+    <link rel="stylesheet" href="/pmch/css/theme-shop.css?v=2.1" />
+    <link rel="stylesheet" href="/pmch/css/skins/default.css?v=2.1" />
+    <link rel="stylesheet" href="/pmch/css/custom.css?v=2.1" />
 
     <style>
+      /* Exact Typography matching https://www.populardiagnostic.com/ */
+      html {
+        font-size: 16px !important;
+        overflow-x: clip !important;
+      }
+      body {
+        font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        font-size: 16px !important;
+        line-height: 1.625 !important;
+        color: #4b5563 !important;
+        background-color: #ffffff;
+        overflow-x: clip !important;
+      }
+      p:not(#footer p):not(.footer-copyright p), .card-text, .entry-content, .lead-sm {
+        font-family: 'Ubuntu', 'Poppins', sans-serif !important;
+        font-size: 16px !important;
+        line-height: 1.625 !important;
+        color: #4b5563 !important;
+      }
+      #footer, #footer p, #footer span, #footer strong, #footer div, #footer a:not(.btn):not(.badge), .footer-copyright, .footer-copyright p, .footer-copyright span {
+        color: #ffffff !important;
+      }
+      #footer .footer-contact-info, #footer .footer-contact-info span, #footer .footer-contact-info p, #footer .footer-contact-info div {
+        font-size: 17px !important;
+        line-height: 1.85 !important;
+        color: #ffffff !important;
+      }
+      #footer .footer-contact-info strong {
+        font-weight: 700 !important;
+        color: #ffffff !important;
+      }
+      #footer .footer-contact-info a {
+        color: #ffffff !important;
+        text-decoration: none !important;
+      }
+      #footer .footer-contact-info a:hover {
+        color: #e2e8f0 !important;
+        text-decoration: underline !important;
+      }
+      .footer-copyright p, .footer-copyright .copyright-text {
+        font-size: 15.5px !important;
+        color: #ffffff !important;
+      }
+      .footer-views-counter, #footer .footer-views-counter {
+        background: transparent !important;
+        color: #ffffff !important;
+        font-size: 15.5px !important;
+      }
+      .footer-views-counter span, .footer-views-counter i {
+        color: #ffffff !important;
+      }
+      h1, .h1, h2, .h2, h3, .h3, h4, .h4, h5, .h5, h6, .h6 {
+        font-family: 'Ubuntu', sans-serif !important;
+        font-weight: 700 !important;
+        color: #1f2937 !important;
+      }
+      #header .nav-link, .main-sticky-navbar .nav-link {
+        font-family: 'Ubuntu', sans-serif !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.025em !important;
+        color: #374151 !important;
+      }
+      #header .nav-link:hover, .main-sticky-navbar .nav-link:hover {
+        color: #006642 !important;
+      }
+      #header.main-sticky-navbar, header#header {
+        position: -webkit-sticky !important;
+        position: sticky !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        z-index: 9999 !important;
+        background-color: #ffffff !important;
+      }
+      .pmch-header-logo {
+        height: auto;
+        width: auto;
+        object-fit: contain;
+        display: block;
+        transition: all 0.25s ease-in-out;
+      }
+      @media (min-width: 1200px) {
+        .pmch-header-logo {
+          max-height: 64px !important;
+          max-width: 330px !important;
+        }
+      }
+      @media (min-width: 992px) and (max-width: 1199.98px) {
+        .pmch-header-logo {
+          max-height: 48px !important;
+          max-width: 250px !important;
+        }
+      }
+      @media (min-width: 768px) and (max-width: 991.98px) {
+        .pmch-header-logo {
+          max-height: 52px !important;
+          max-width: 270px !important;
+        }
+      }
+      @media (min-width: 576px) and (max-width: 767.98px) {
+        .pmch-header-logo {
+          max-height: 46px !important;
+          max-width: 235px !important;
+        }
+      }
+      @media (max-width: 575.98px) {
+        .pmch-header-logo {
+          max-height: 42px !important;
+          max-width: 205px !important;
+        }
+      }
+      @media (max-width: 379.98px) {
+        .pmch-header-logo {
+          max-height: 36px !important;
+          max-width: 175px !important;
+        }
+      }
       #header .header-nav-top .nav > li > a, #header .header-nav-top .nav > li > span {
         color: #fff;
       }
@@ -99,7 +219,6 @@
       body {
         -ms-overflow-style: none !important; /* IE & Edge */
         scrollbar-width: none !important; /* Firefox */
-        overflow-y: scroll; /* Keep scrolling smoothly enabled */
       }
 
       /* ========================================================

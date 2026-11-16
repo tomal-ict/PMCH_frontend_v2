@@ -47,7 +47,7 @@ function ScrollToTop() {
 
 export default function App() {
   const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname === '/login';
+  const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/myadmin') || location.pathname === '/login';
 
   // Digital Marketing & SEO Pixel/Tag Dynamic Injector
   useEffect(() => {
@@ -151,6 +151,11 @@ export default function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+
+          {/* Dedicated /myadmin URL requested by user */}
+          <Route path="/myadmin" element={<AdminDashboard />} />
+          <Route path="/myadmin/login" element={<AdminLogin />} />
+          <Route path="/myadmin/dashboard" element={<AdminDashboard />} />
 
           {/* 404 Fallback */}
           <Route

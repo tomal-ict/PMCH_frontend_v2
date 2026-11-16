@@ -38,13 +38,32 @@ export default function Footer() {
               src="/pmch/img/logo.png"
               style={{ background: 'white', padding: '10px', borderRadius: '4px' }}
             />
-            <p style={{ color: 'white', marginTop: '15px', lineHeight: '1.8' }}>
-              House: 08, Road: 02, Dhanmondi, Dhaka-1205, Bangladesh
-              <br />
-              <strong>Phone:</strong> 09666 787800
-              <br />
-              <strong>E-mail:</strong> info@popular-hospital.com
-            </p>
+            <div className="footer-contact-info mt-3" style={{ fontSize: '17px', lineHeight: '1.85', color: '#ffffff' }}>
+              <div className="d-flex align-items-start mb-2 justify-content-center justify-content-lg-start">
+                <i className="fas fa-map-marker-alt mt-1 mr-2 text-white" style={{ fontSize: '16px', opacity: 0.9 }}></i>
+                <span style={{ color: '#ffffff', fontWeight: 400 }}>
+                  House: 08, Road: 02, Dhanmondi, Dhaka-1205, Bangladesh
+                </span>
+              </div>
+              <div className="d-flex align-items-center mb-2 justify-content-center justify-content-lg-start">
+                <i className="fas fa-phone-alt mr-2 text-white" style={{ fontSize: '15px', opacity: 0.9 }}></i>
+                <span style={{ color: '#ffffff' }}>
+                  <strong style={{ color: '#ffffff' }}>Phone:</strong>{' '}
+                  <a href="tel:09666787800" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 500 }}>
+                    09666 787800
+                  </a>
+                </span>
+              </div>
+              <div className="d-flex align-items-center mb-2 justify-content-center justify-content-lg-start">
+                <i className="fas fa-envelope mr-2 text-white" style={{ fontSize: '15px', opacity: 0.9 }}></i>
+                <span style={{ color: '#ffffff' }}>
+                  <strong style={{ color: '#ffffff' }}>E-mail:</strong>{' '}
+                  <a href="mailto:info@popular-hospital.com" style={{ color: '#ffffff', textDecoration: 'none', fontWeight: 500 }}>
+                    info@popular-hospital.com
+                  </a>
+                </span>
+              </div>
+            </div>
 
             {/* Social Media Icons */}
             <div className="mt-3 pt-2">
@@ -140,15 +159,14 @@ export default function Footer() {
         <div className="container">
           <div className="row align-items-center">
             <div className="col-lg-6 text-center text-lg-left text-white mb-2 mb-lg-0">
-              <p className="mb-0">
+              <p className="mb-0 copyright-text" style={{ color: '#ffffff', fontSize: '15.5px', fontWeight: 400 }}>
                 © Copyright {new Date().getFullYear()}. Popular Medical College Hospital. All Rights Reserved.
               </p>
             </div>
             <div className="col-lg-6 text-center text-lg-right text-white">
-              <p className="mb-0">
-                <span className="badge badge-light px-3 py-2 text-dark font-weight-bold">
-                  <i className="fas fa-eye text-primary mr-1"></i> {views.toLocaleString()} Total Views
-                </span>
+              <p className="mb-0 footer-views-counter" style={{ color: '#ffffff', fontSize: '15.5px', fontWeight: 500, background: 'none' }}>
+                <i className="fas fa-eye mr-2" style={{ color: '#ffffff', opacity: 0.9 }}></i>
+                <span style={{ color: '#ffffff' }}>{views.toLocaleString()} Total Views</span>
               </p>
             </div>
           </div>

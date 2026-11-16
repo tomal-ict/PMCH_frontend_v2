@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 
 export default function AdminLogin() {
@@ -8,6 +8,7 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -19,7 +20,8 @@ export default function AdminLogin() {
         if (res.data?.success && res.data.token) {
           localStorage.setItem('pmch_admin_token', res.data.token);
           localStorage.setItem('pmch_admin_user', JSON.stringify(res.data.user));
-          navigate('/admin/dashboard');
+          const target = location.pathname.startsWith('/myadmin') ? '/myadmin/dashboard' : '/admin/dashboard';
+          navigate(target);
         } else {
           setError(res.data?.message || 'Login failed.');
         }
