@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = process.env.PORT || 3000;
-const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:5000';
+const PORT = process.env.PORT || 5236;
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:3214';
 const DIST_DIR = path.join(__dirname, 'dist');
 
 const MIME_TYPES = {
@@ -38,7 +38,7 @@ const server = http.createServer((req, res) => {
         method: req.method,
         headers: {
           ...req.headers,
-          host: '127.0.0.1:5000'
+          host: '127.0.0.1:3214'
         }
       },
       (backendRes) => {
